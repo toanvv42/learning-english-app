@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireEnv } from "@/lib/env";
 import { primaryIssues, type AIFeedback } from "@/types/feedback";
 
-const feedbackSchema = z.object({
+export const feedbackSchema = z.object({
   overall_score: z.number().int().min(1).max(10),
   primary_issue: z.enum(primaryIssues),
   what_you_said: z.string().min(1),

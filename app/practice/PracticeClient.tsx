@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { generateFeedbackWithBrowserGemini, transcribeWithBrowserGemini } from "@/app/practice/browserGemini";
 import type { AIFeedback } from "@/types/feedback";
 
 type PracticeItem = {
@@ -71,6 +72,9 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [topic, setTopic] = useState("all");
   const [focus, setFocus] = useState("all");
   const [saveAudio, setSaveAudio] = useState(false);
+  const [browserGeminiKey, setBrowserGeminiKey] = useState("");
+  const [browserGeminiKeyInput, setBrowserGeminiKeyInput] = useState("");
+  const [useBrowserGemini, setUseBrowserGemini] = useState(false);
 
   const topics = [
     { value: "all", label: "All topics" },
@@ -118,12 +122,31 @@ export function PracticeClient({ items }: PracticeClientProps) {
   }
 
   useEffect(() => {
+    const savedKey = window.localStorage.getItem("learningEnglishGeminiKey") ?? "";
+    setBrowserGeminiKey(savedKey);
+    setBrowserGeminiKeyInput(savedKey);
+    setUseBrowserGemini(Boolean(savedKey));
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (recordingUrl) {
         URL.revokeObjectURL(recordingUrl);
       }
     };
   }, [recordingUrl]);
+
+  function saveBrowserGeminiKey() {
+    const nextKey = browserGeminiKeyInput.trim();
+    setBrowserGeminiKey(nextKey);
+    setUseBrowserGemini(Boolean(nextKey));
+
+    if (nextKey) {
+      window.localStorage.setItem("learningEnglishGeminiKey", nextKey);
+    } else {
+      window.localStorage.removeItem("learningEnglishGeminiKey");
+    }
+  }
 
   async function handleRecordingComplete(blob: Blob) {
     setStep(saveAudio ? "saving" : "transcribing");
@@ -175,33 +198,47 @@ export function PracticeClient({ items }: PracticeClientProps) {
       }
 
       setStep("transcribing");
-      const formData = new FormData();
-      formData.append("audio", blob, "recording.webm");
-      const transcribeResponse = objectKey
-        ? await fetch("/api/transcribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ objectKey }),
-          })
-        : await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
-      const transcribed = await parseApiResponse<TranscribeResponse>(
-        transcribeResponse,
-        "Could not transcribe audio.",
-      );
-      setTranscript(transcribed.transcript);
+      const shouldUseBrowserGemini = useBrowserGemini && browserGeminiKey;
+      const transcriptText = shouldUseBrowserGemini
+        ? await transcribeWithBrowserGemini(blob, browserGeminiKey)
+        : await (async () => {
+            const formData = new FormData();
+            formData.append("audio", blob, "recording.webm");
+            const transcribeResponse = objectKey
+              ? await fetch("/api/transcribe", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ objectKey }),
+                })
+              : await fetch("/api/transcribe", {
+                  method: "POST",
+                  body: formData,
+                });
+            const transcribed = await parseApiResponse<TranscribeResponse>(
+              transcribeResponse,
+              "Could not transcribe audio.",
+            );
+            return transcribed.transcript;
+          })();
+      setTranscript(transcriptText);
 
       setStep("generating");
+      const browserFeedback = shouldUseBrowserGemini
+        ? await generateFeedbackWithBrowserGemini({
+            apiKey: browserGeminiKey,
+            targetText: item.content,
+            transcript: transcriptText,
+          })
+        : null;
       const feedbackResponse = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itemId: item.id,
           targetText: item.content,
-          transcript: transcribed.transcript,
+          transcript: transcriptText,
           audioUrl,
+          feedback: browserFeedback,
         }),
       });
       const generated = await parseApiResponse<FeedbackResponse>(
@@ -288,6 +325,30 @@ export function PracticeClient({ items }: PracticeClientProps) {
               className="h-4 w-4 accent-moss"
             />
           </label>
+          <div className="space-y-3 rounded-md border bg-background px-3 py-3">
+            <label className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-foreground">Use browser Gemini key</span>
+              <input
+                type="checkbox"
+                checked={useBrowserGemini}
+                onChange={(event) => setUseBrowserGemini(event.target.checked)}
+                disabled={!browserGeminiKey}
+                className="h-4 w-4 accent-moss"
+              />
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={browserGeminiKeyInput}
+                onChange={(event) => setBrowserGeminiKeyInput(event.target.value)}
+                placeholder="Gemini API key"
+                className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+              />
+              <Button type="button" variant="outline" onClick={saveBrowserGeminiKey}>
+                Save key
+              </Button>
+            </div>
+          </div>
           {filteredItems.length === 0 ? (
             <Alert>
               <AlertTitle>No exact match</AlertTitle>

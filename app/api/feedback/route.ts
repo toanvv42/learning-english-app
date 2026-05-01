@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateFeedback } from "@/lib/gemini/feedback";
+import { feedbackSchema, generateFeedback } from "@/lib/gemini/feedback";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const requestSchema = z.object({
@@ -8,6 +8,7 @@ const requestSchema = z.object({
   targetText: z.string().min(1),
   transcript: z.string().min(1),
   audioUrl: z.string().nullable(),
+  feedback: feedbackSchema.optional(),
 });
 
 export async function POST(request: Request) {
@@ -22,10 +23,12 @@ export async function POST(request: Request) {
     }
 
     const body = requestSchema.parse(await request.json());
-    const feedback = await generateFeedback({
-      targetText: body.targetText,
-      transcript: body.transcript,
-    });
+    const feedback =
+      body.feedback ??
+      (await generateFeedback({
+        targetText: body.targetText,
+        transcript: body.transcript,
+      }));
 
     const { data, error } = await supabase
       .from("recordings")

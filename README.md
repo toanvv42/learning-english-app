@@ -37,6 +37,8 @@ CLOUDFLARE_ACCOUNT_ID=
 
 The R2 values are optional for local practice. They are only needed when the user turns on **Save audio to R2**.
 
+On Cloudflare Workers, Gemini can reject server-side calls from some Worker egress locations. The practice screen supports an optional browser Gemini key stored in local browser storage so a user can call Gemini from their own browser instead.
+
 Run locally:
 
 ```bash
