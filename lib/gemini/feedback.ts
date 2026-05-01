@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { z } from "zod";
 import { requireEnv } from "@/lib/env";
 import { primaryIssues, type AIFeedback } from "@/types/feedback";
+import { DEFAULT_GEMINI_MODEL, type GeminiModel } from "./models";
 
 export const feedbackSchema = z.object({
   overall_score: z.number().int().min(1).max(10),
@@ -70,6 +71,7 @@ function isWrongSentence(targetText: string, transcript: string) {
 export async function generateFeedback(input: {
   targetText: string;
   transcript: string;
+  model?: GeminiModel;
 }): Promise<AIFeedback> {
   if (isWrongSentence(input.targetText, input.transcript)) {
     return {
@@ -89,7 +91,7 @@ export async function generateFeedback(input: {
   });
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: input.model || DEFAULT_GEMINI_MODEL,
     contents: `Target sentence: ${input.targetText}\nGemini transcript: ${input.transcript}`,
     config: {
       systemInstruction: systemPrompt,

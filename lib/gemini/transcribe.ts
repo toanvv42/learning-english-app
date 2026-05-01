@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { requireEnv } from "@/lib/env";
+import { DEFAULT_GEMINI_MODEL, type GeminiModel } from "./models";
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
@@ -14,14 +15,14 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return btoa(binary);
 }
 
-export async function transcribeAudioBlob(audioBlob: Blob): Promise<string> {
+export async function transcribeAudioBlob(audioBlob: Blob, model: GeminiModel = DEFAULT_GEMINI_MODEL): Promise<string> {
   const ai = new GoogleGenAI({
     apiKey: requireEnv("GEMINI_API_KEY"),
   });
 
   const base64Audio = arrayBufferToBase64(await audioBlob.arrayBuffer());
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model,
     contents: [
       {
         text: "Generate only a plain English transcript of the speech in this audio. Do not add commentary, labels, timestamps, or punctuation explanations.",

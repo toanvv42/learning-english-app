@@ -1,4 +1,5 @@
 import { primaryIssues, type AIFeedback, type PrimaryIssue } from "@/types/feedback";
+import { DEFAULT_GEMINI_MODEL, type GeminiModel } from "@/lib/gemini/models";
 
 type GeminiPart = {
   text?: string;
@@ -54,9 +55,9 @@ function extractText(response: GeminiResponse) {
   return response.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
 }
 
-async function callGemini(apiKey: string, body: unknown) {
+async function callGemini(apiKey: string, model: GeminiModel, body: unknown) {
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -76,9 +77,9 @@ async function callGemini(apiKey: string, body: unknown) {
   return extractText(payload as GeminiResponse);
 }
 
-export async function transcribeWithBrowserGemini(audioBlob: Blob, apiKey: string) {
+export async function transcribeWithBrowserGemini(audioBlob: Blob, apiKey: string, model: GeminiModel = DEFAULT_GEMINI_MODEL) {
   const base64Audio = arrayBufferToBase64(await audioBlob.arrayBuffer());
-  const transcript = await callGemini(apiKey, {
+  const transcript = await callGemini(apiKey, model, {
     contents: [
       {
         parts: [
@@ -128,8 +129,10 @@ export async function generateFeedbackWithBrowserGemini(input: {
   apiKey: string;
   targetText: string;
   transcript: string;
+  model?: GeminiModel;
 }) {
-  const text = await callGemini(input.apiKey, {
+  const model = input.model || DEFAULT_GEMINI_MODEL;
+  const text = await callGemini(input.apiKey, model, {
     contents: [
       {
         parts: [

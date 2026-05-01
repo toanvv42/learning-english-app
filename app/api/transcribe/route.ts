@@ -3,9 +3,11 @@ import { z } from "zod";
 import { getR2ObjectBlob } from "@/lib/r2/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { transcribeAudioBlob } from "@/lib/gemini/transcribe";
+import { type GeminiModel } from "@/lib/gemini/models";
 
 const requestSchema = z.object({
   objectKey: z.string().min(1),
+  model: z.string().nullable().optional(),
 });
 
 export async function POST(request: Request) {
@@ -21,10 +23,12 @@ export async function POST(request: Request) {
 
     const contentType = request.headers.get("content-type") ?? "";
     let audioBlob: Blob;
+    let selectedModel: GeminiModel | undefined;
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const audio = formData.get("audio");
+      selectedModel = (formData.get("model") as GeminiModel) || undefined;
 
       if (!(audio instanceof Blob)) {
         return NextResponse.json({ error: "Missing audio file." }, { status: 400 });
@@ -32,7 +36,8 @@ export async function POST(request: Request) {
 
       audioBlob = audio;
     } else {
-      const { objectKey } = requestSchema.parse(await request.json());
+      const { objectKey, model } = requestSchema.parse(await request.json());
+      selectedModel = model as GeminiModel;
 
       if (!objectKey.startsWith(`recordings/${user.id}/`)) {
         return NextResponse.json({ error: "Invalid recording object." }, { status: 403 });
@@ -41,7 +46,7 @@ export async function POST(request: Request) {
       audioBlob = await getR2ObjectBlob(objectKey);
     }
 
-    const transcript = await transcribeAudioBlob(audioBlob);
+    const transcript = await transcribeAudioBlob(audioBlob, selectedModel);
 
     return NextResponse.json({ transcript });
   } catch (error) {

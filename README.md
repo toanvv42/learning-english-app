@@ -8,7 +8,7 @@ Pronunciation feedback app for a Vietnamese English learner practicing topic-bas
 - TypeScript
 - Tailwind CSS
 - Supabase Auth and Postgres
-- Gemini `gemini-2.5-flash` for transcription and feedback
+- Multiple Gemini models (`gemini-2.5-flash`, `gemini-2.5-flash-lite`) for transcription and feedback
 - Optional Cloudflare R2 audio storage
 - Cloudflare Workers with OpenNext for Cloudflare
 

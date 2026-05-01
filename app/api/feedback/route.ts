@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { feedbackSchema, generateFeedback } from "@/lib/gemini/feedback";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { type GeminiModel } from "@/lib/gemini/models";
 
 const requestSchema = z.object({
   itemId: z.string().uuid().nullable(),
   targetText: z.string().min(1),
   transcript: z.string().min(1),
   audioUrl: z.string().nullable(),
-  feedback: feedbackSchema.optional(),
+  feedback: feedbackSchema.nullable().optional(),
+  model: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -28,6 +30,7 @@ export async function POST(request: Request) {
       (await generateFeedback({
         targetText: body.targetText,
         transcript: body.transcript,
+        model: body.model as GeminiModel,
       }));
 
     const { data, error } = await supabase
