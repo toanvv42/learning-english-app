@@ -152,6 +152,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
     if (savedFocus && focuses.some((f) => f.value === savedFocus)) {
       setFocus(savedFocus);
     }
+
   }, []);
 
   useEffect(() => {
@@ -322,7 +323,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
+    <div className="mx-auto w-full max-w-3xl py-1 sm:px-4 sm:py-8">
       {showConfig ? (
         <Card className="border-none bg-white/70 shadow-2xl backdrop-blur-xl ring-1 ring-black/5">
           <CardContent className="space-y-8 p-8 sm:p-12">
@@ -468,20 +469,20 @@ export function PracticeClient({ items }: PracticeClientProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-8 animate-in fade-in duration-700">
-          <div className="flex items-center justify-between gap-4 px-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
+        <div className="space-y-6 animate-in fade-in duration-700 sm:space-y-8">
+          <div className="flex items-center justify-between gap-3 rounded-[1.35rem] bg-white/55 p-2.5 shadow-sm ring-1 ring-black/5 backdrop-blur-sm sm:rounded-[1.75rem] sm:p-3 sm:px-4">
+            <div className="flex min-w-0 flex-1 gap-2 sm:flex-wrap">
+              <Badge variant="secondary" className="min-w-0 justify-center truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
                 {topics.find((t) => t.value === topic)?.label}
               </Badge>
-              <Badge variant="secondary" className="rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
+              <Badge variant="secondary" className="hidden min-w-0 justify-center truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10 sm:inline-flex">
                 {focuses.find((f) => f.value === focus)?.label}
               </Badge>
-              <Badge variant="secondary" className="rounded-full bg-moss/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss ring-1 ring-moss/20">
+              <Badge variant="secondary" className="min-w-0 max-w-[15rem] justify-center truncate rounded-full bg-moss/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-moss ring-1 ring-moss/20 sm:px-4 sm:py-1.5">
                 {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
               </Badge>
               {useBrowserGemini && (
-                <Badge variant="secondary" className="rounded-full bg-copper/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20">
+                <Badge variant="secondary" className="hidden min-w-0 justify-center truncate rounded-full bg-copper/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20 sm:inline-flex">
                   Browser Key
                 </Badge>
               )}
@@ -489,12 +490,13 @@ export function PracticeClient({ items }: PracticeClientProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="group flex h-10 items-center gap-2 rounded-full px-4 text-moss hover:bg-moss/5"
+              className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full p-0 text-moss hover:bg-moss/5 sm:w-auto sm:px-4"
               onClick={() => setShowConfig(true)}
               disabled={isBusy}
+              aria-label="Open practice configuration"
             >
               <Settings className="h-4 w-4 transition-transform group-hover:rotate-45" />
-              <span className="text-sm font-bold uppercase tracking-widest">Config</span>
+              <span className="hidden text-sm font-black uppercase tracking-widest sm:inline">Config</span>
             </Button>
           </div>
 
@@ -508,7 +510,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
             )}
           </div>
 
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <div className="group relative">
               <div className="absolute -inset-1 rounded-[2.5rem] bg-gradient-to-r from-moss/20 to-copper/20 opacity-0 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200" />
               <div className="relative">
@@ -516,8 +518,8 @@ export function PracticeClient({ items }: PracticeClientProps) {
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-6">
-              <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-[0.2em] text-moss/40">
+            <div className="flex flex-col items-center gap-4 sm:gap-6">
+              <div className="flex flex-wrap items-center justify-center gap-3 text-xs font-bold uppercase tracking-[0.22em] text-moss/40 sm:text-sm">
                 <span>Sentence {itemIndex + 1} of {activeItems.length}</span>
                 <div className="h-1 w-1 rounded-full bg-moss/20" />
                 <Button

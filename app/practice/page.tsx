@@ -37,12 +37,12 @@ export default async function PracticePage() {
       : fallbackItems;
 
   return (
-    <main className="min-h-screen">
-      <div className="mx-auto max-w-4xl px-6 py-8 sm:py-12">
-        <header className="mb-12 flex items-center justify-between gap-6">
-          <div className="space-y-1">
+    <main className="min-h-screen overflow-x-hidden">
+      <div className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-12">
+        <header className="mb-7 grid grid-cols-[1fr_auto] items-start gap-3 sm:mb-12 sm:flex sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-moss/60">Practice</p>
-            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+            <h1 className="text-[clamp(2.9rem,13vw,4rem)] font-black leading-[0.88] tracking-[-0.075em] text-foreground sm:text-5xl sm:tracking-tight">
               Pronunciation.
             </h1>
           </div>
@@ -50,11 +50,12 @@ export default async function PracticePage() {
             href="/history" 
             className={cn(
               buttonVariants({ variant: "ghost" }), 
-              "group h-12 rounded-2xl bg-white/50 px-6 font-bold shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-all hover:bg-white"
+              "group mt-1 h-12 w-12 shrink-0 rounded-2xl bg-white/80 p-0 font-bold shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-all hover:bg-white sm:mt-0 sm:h-12 sm:w-auto sm:px-6"
             )}
+            aria-label="Open history"
           >
-            <Clock3 className="mr-2 h-4 w-4 text-moss transition-transform group-hover:-rotate-12" />
-            <span className="text-moss">History</span>
+            <Clock3 className="h-5 w-5 text-moss transition-transform group-hover:-rotate-12 sm:mr-2 sm:h-4 sm:w-4" />
+            <span className="hidden text-moss sm:inline">History</span>
           </Link>
         </header>
 

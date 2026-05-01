@@ -110,7 +110,7 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center py-8">
+    <div className="flex flex-col items-center justify-center py-5 sm:py-8">
       <div className="relative">
         {isRecording && (
           <div className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-destructive/20" />
@@ -120,19 +120,19 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
           onClick={isRecording ? stopRecording : startRecording}
           disabled={disabled && !isRecording}
           variant={isRecording ? "destructive" : "default"}
-          className={`h-24 w-24 rounded-full shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+          className={`h-20 w-20 rounded-full shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 sm:h-24 sm:w-24 ${
             isRecording ? "ring-4 ring-destructive/20" : "bg-moss hover:bg-moss/90"
           }`}
         >
           {isRecording ? (
-            <Square className="h-10 w-10 fill-current" />
+            <Square className="h-8 w-8 fill-current sm:h-10 sm:w-10" />
           ) : (
-            <Mic className="h-10 w-10" />
+            <Mic className="h-8 w-8 sm:h-10 sm:w-10" />
           )}
         </Button>
       </div>
       
-      <p className={`mt-6 text-sm font-medium transition-colors duration-300 ${
+      <p className={`mt-4 text-sm font-medium transition-colors duration-300 sm:mt-6 ${
         isRecording ? "text-destructive animate-pulse" : "text-muted-foreground"
       }`}>
         {isRecording
