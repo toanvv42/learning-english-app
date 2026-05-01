@@ -4,8 +4,6 @@ import { getR2ObjectBlob } from "@/lib/r2/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { transcribeAudioBlob } from "@/lib/gemini/transcribe";
 
-export const runtime = "edge";
-
 const requestSchema = z.object({
   objectKey: z.string().min(1),
 });
@@ -21,13 +19,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { objectKey } = requestSchema.parse(await request.json());
+    const contentType = request.headers.get("content-type") ?? "";
+    let audioBlob: Blob;
 
-    if (!objectKey.startsWith(`recordings/${user.id}/`)) {
-      return NextResponse.json({ error: "Invalid recording object." }, { status: 403 });
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const audio = formData.get("audio");
+
+      if (!(audio instanceof Blob)) {
+        return NextResponse.json({ error: "Missing audio file." }, { status: 400 });
+      }
+
+      audioBlob = audio;
+    } else {
+      const { objectKey } = requestSchema.parse(await request.json());
+
+      if (!objectKey.startsWith(`recordings/${user.id}/`)) {
+        return NextResponse.json({ error: "Invalid recording object." }, { status: 403 });
+      }
+
+      audioBlob = await getR2ObjectBlob(objectKey);
     }
 
-    const audioBlob = await getR2ObjectBlob(objectKey);
     const transcript = await transcribeAudioBlob(audioBlob);
 
     return NextResponse.json({ transcript });

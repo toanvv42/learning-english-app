@@ -6,8 +6,6 @@ import { createR2Client, getR2PublicUrl } from "@/lib/r2/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireEnv } from "@/lib/env";
 
-export const runtime = "edge";
-
 const requestSchema = z.object({
   contentType: z.literal("audio/webm"),
 });

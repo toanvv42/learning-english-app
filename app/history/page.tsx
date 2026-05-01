@@ -8,8 +8,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { AIFeedback } from "@/types/feedback";
 
-export const runtime = "edge";
-
 type RecordingRow = {
   id: string;
   created_at: string;

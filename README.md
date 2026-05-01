@@ -1,6 +1,6 @@
 # English Pronunciation Practice MVP
 
-Pronunciation feedback app for a Vietnamese English learner practicing DevOps/cloud sentences.
+Pronunciation feedback app for a Vietnamese English learner practicing topic-based English sentences.
 
 ## Stack
 
@@ -8,10 +8,9 @@ Pronunciation feedback app for a Vietnamese English learner practicing DevOps/cl
 - TypeScript
 - Tailwind CSS
 - Supabase Auth and Postgres
-- Cloudflare R2
-- Gemini `gemini-2.5-flash`
-- Gemini `gemini-2.5-flash`
-- Cloudflare Pages with `@cloudflare/next-on-pages`
+- Gemini `gemini-2.5-flash` for transcription and feedback
+- Optional Cloudflare R2 audio storage
+- Cloudflare Pages with OpenNext for Cloudflare
 
 ## Setup
 
@@ -26,7 +25,6 @@ Create `.env.local` from `.env.local.example`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
 GEMINI_API_KEY=
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
@@ -34,6 +32,8 @@ R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=
 R2_PUBLIC_URL=
 ```
+
+The R2 values are optional for local practice. They are only needed when the user turns on **Save audio to R2**.
 
 Run locally:
 
@@ -51,12 +51,16 @@ npm run dev
 
 The schema enables RLS. `items` are readable by authenticated users, and every `recordings` policy is restricted with `auth.uid() = user_id`.
 
-## Cloudflare R2
+## Optional Cloudflare R2
+
+By default, the browser sends the recorded audio directly to `/api/transcribe`, and the app does not keep the audio file. Users can still listen to their recording locally in the browser.
+
+Enable R2 only if you want to keep audio files for later review.
 
 1. Create an R2 bucket.
 2. Create R2 API tokens with object read/write access for the bucket.
 3. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME`.
-4. Configure a public/custom domain for reads and set `R2_PUBLIC_URL`.
+4. Optionally configure a public/custom domain for reads and set `R2_PUBLIC_URL`.
 5. Add CORS rules that allow browser `PUT` uploads from your local and production origins.
 
 Example CORS rule:
@@ -64,7 +68,7 @@ Example CORS rule:
 ```json
 [
   {
-    "AllowedOrigins": ["http://localhost:3000"],
+    "AllowedOrigins": ["http://localhost:3001", "http://127.0.0.1:3001"],
     "AllowedMethods": ["PUT", "GET"],
     "AllowedHeaders": ["Content-Type"],
     "ExposeHeaders": ["ETag"],
@@ -86,13 +90,42 @@ npm run secrets:scan
 
 ## Deploy To Cloudflare Pages
 
-Use this build command:
+Create the Pages project once:
+
+```bash
+npx wrangler pages project create learning-english-app --production-branch main
+```
+
+Required GitHub repository secrets:
+
+```text
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+GEMINI_API_KEY
+```
+
+Optional GitHub repository secrets for **Save audio to R2**:
+
+```text
+R2_ACCOUNT_ID
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET_NAME
+R2_PUBLIC_URL
+```
+
+The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, OpenNext, uploads runtime secrets to the Cloudflare project, and deploys with `opennextjs-cloudflare deploy`.
+
+Manual build and deploy:
 
 ```bash
 npm run pages:build
+npm run pages:deploy
 ```
 
-Set the same environment variables in Cloudflare Pages. The generated output is handled by `@cloudflare/next-on-pages`.
+Use a narrowly scoped Cloudflare API token with Cloudflare Pages edit access for this account.
 
 ## GitHub And Secrets
 
@@ -110,7 +143,8 @@ git config core.hooksPath .githooks
 ## Notes
 
 - Audio is recorded as `audio/webm`.
-- The browser uploads audio directly to R2 through `/api/upload-url`.
-- `/api/transcribe` sends the uploaded file to Gemini.
+- By default, `/api/transcribe` receives the browser audio directly and sends it to Gemini.
+- If the user enables **Save audio to R2**, the browser uploads audio through `/api/upload-url`, then `/api/transcribe` reads the private R2 object server-side.
 - `/api/feedback` sends the transcript and target sentence to Gemini, validates the JSON response, then stores the attempt in Supabase.
-- Real Supabase, R2, Gemini credentials are required to test the full recording flow.
+- Topic and focus filters use tags in `items.tags`.
+- Real Supabase and Gemini credentials are required to test the default flow. R2 credentials are required only for optional audio storage.

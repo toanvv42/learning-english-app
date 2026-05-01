@@ -3,13 +3,11 @@ import { z } from "zod";
 import { generateFeedback } from "@/lib/gemini/feedback";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export const runtime = "edge";
-
 const requestSchema = z.object({
   itemId: z.string().uuid().nullable(),
   targetText: z.string().min(1),
   transcript: z.string().min(1),
-  audioUrl: z.string().min(1),
+  audioUrl: z.string().nullable(),
 });
 
 export async function POST(request: Request) {
