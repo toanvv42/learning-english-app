@@ -26,68 +26,93 @@ export default async function HistoryPage() {
   const recordings = (data ?? []) as RecordingRow[];
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-4 py-6 sm:py-10">
-      <header className="mb-8 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-moss">History</p>
-          <h1 className="text-3xl font-semibold text-foreground">Past attempts</h1>
-        </div>
-        <Link href="/practice" className={cn(buttonVariants({ variant: "outline" }), "shrink-0")}>
-          <Mic2 className="h-4 w-4" />
-          Practice
-        </Link>
-      </header>
+    <main className="min-h-screen">
+      <div className="mx-auto max-w-4xl px-6 py-8 sm:py-12">
+        <header className="mb-12 flex items-center justify-between gap-6">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-moss/60">Archive</p>
+            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+              History.
+            </h1>
+          </div>
+          <Link 
+            href="/practice" 
+            className={cn(
+              buttonVariants({ variant: "ghost" }), 
+              "group h-12 rounded-2xl bg-white/50 px-6 font-bold shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-all hover:bg-white"
+            )}
+          >
+            <Mic2 className="mr-2 h-4 w-4 text-moss transition-transform group-hover:scale-110" />
+            <span className="text-moss">Practice</span>
+          </Link>
+        </header>
 
-      {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Could not load history</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
-        </Alert>
-      ) : null}
+        {error && (
+          <Alert variant="destructive" className="rounded-2xl border-none shadow-lg shadow-destructive/10">
+            <AlertTitle className="text-sm font-bold uppercase tracking-widest">Error</AlertTitle>
+            <AlertDescription className="text-xs">{error.message}</AlertDescription>
+          </Alert>
+        )}
 
-      {!error && recordings.length === 0 ? (
-        <Card>
-          <CardContent className="p-5">
-            <p className="font-semibold text-foreground">No attempts yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Record your first sentence from the practice page.</p>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <div className="space-y-4">
-        {recordings.map((recording) => (
-          <Card key={recording.id}>
-            <CardContent className="p-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <time className="text-sm text-muted-foreground" dateTime={recording.created_at}>
-                {new Intl.DateTimeFormat("en", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(recording.created_at))}
-              </time>
-              <Badge variant="secondary" className="w-fit">
-                {recording.ai_feedback.primary_issue.replaceAll("_", " ")} ·{" "}
-                {recording.ai_feedback.overall_score}/10
-              </Badge>
-            </div>
-
-            <dl className="mt-4 space-y-3">
-              <div>
-                <dt className="text-sm font-semibold text-muted-foreground">Target</dt>
-                <dd className="mt-1 text-foreground">{recording.target_text}</dd>
+        {!error && recordings.length === 0 && (
+          <Card className="border-none bg-white/50 shadow-sm backdrop-blur-sm ring-1 ring-black/5">
+            <CardContent className="p-12 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-moss/5 text-moss/20">
+                <Mic2 className="h-8 w-8" />
               </div>
-              <div>
-                <dt className="text-sm font-semibold text-muted-foreground">Transcript</dt>
-                <dd className="mt-1 text-foreground">{recording.transcript}</dd>
-              </div>
-              <div>
-                <dt className="text-sm font-semibold text-copper">Fix</dt>
-                <dd className="mt-1 text-foreground">{recording.ai_feedback.specific_fix}</dd>
-              </div>
-            </dl>
+              <h3 className="text-xl font-bold text-foreground">No attempts yet</h3>
+              <p className="mt-2 text-muted-foreground text-sm max-w-[240px] mx-auto">Record your first sentence from the practice page to see your history.</p>
+              <Link 
+                href="/practice" 
+                className={cn(buttonVariants({ variant: "default" }), "mt-8 h-12 rounded-xl bg-moss px-8 font-bold text-white shadow-xl shadow-moss/20 hover:bg-moss/90")}
+              >
+                Start Practicing
+              </Link>
             </CardContent>
           </Card>
-        ))}
+        )}
+
+        <div className="space-y-6">
+          {recordings.map((recording) => (
+            <Card key={recording.id} className="group overflow-hidden border-none bg-white/50 shadow-sm backdrop-blur-sm ring-1 ring-black/5 transition-all hover:bg-white hover:shadow-xl hover:shadow-black/5">
+              <CardContent className="p-6 sm:p-8">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 rounded-full bg-moss/20" />
+                    <time className="text-xs font-bold uppercase tracking-widest text-moss/60" dateTime={recording.created_at}>
+                      {new Intl.DateTimeFormat("en", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      }).format(new Date(recording.created_at))}
+                    </time>
+                  </div>
+                  <Badge variant="secondary" className="rounded-full bg-moss/10 px-4 py-1 text-xs font-bold uppercase tracking-widest text-moss ring-1 ring-moss/20">
+                    {recording.ai_feedback.primary_issue.replaceAll("_", " ")} · {recording.ai_feedback.overall_score}/10
+                  </Badge>
+                </div>
+
+                <div className="grid gap-8 sm:grid-cols-2">
+                  <div className="space-y-6">
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-moss/40">Target</span>
+                      <p className="text-lg font-medium text-foreground/80 italic font-serif leading-snug">"{recording.target_text}"</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-moss/40">Transcript</span>
+                      <p className="text-lg font-medium text-foreground">"{recording.transcript}"</p>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-copper/5 p-6 ring-1 ring-copper/10 group-hover:bg-copper/10 transition-colors">
+                    <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.2em] text-copper">The Key Fix</span>
+                    <p className="text-base font-semibold leading-relaxed text-copper-dark">
+                      {recording.ai_feedback.specific_fix}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     </main>
   );

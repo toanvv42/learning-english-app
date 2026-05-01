@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 
 type RecorderProps = {
   disabled?: boolean;
@@ -59,41 +58,39 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
   }
 
   return (
-    <Card>
-      <CardContent className="p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-moss">Recorder</p>
-          <p className="mt-1 text-sm text-stone-600">
-            {isRecording ? "Recording now. Read the target sentence clearly." : "Ready to record."}
-          </p>
-        </div>
-        {isRecording ? (
-          <Button
-            type="button"
-            onClick={stopRecording}
-            variant="destructive"
-            size="lg"
-            className="w-full sm:w-auto"
-          >
-            <Square className="h-4 w-4" />
-            Stop
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            onClick={startRecording}
-            disabled={disabled}
-            size="lg"
-            className="w-full sm:w-auto"
-          >
-            <Mic className="h-4 w-4" />
-            Record
-          </Button>
+    <div className="flex flex-col items-center justify-center py-8">
+      <div className="relative">
+        {isRecording && (
+          <div className="absolute inset-0 animate-ping rounded-full bg-destructive/20" />
         )}
+        <Button
+          type="button"
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={disabled && !isRecording}
+          variant={isRecording ? "destructive" : "default"}
+          className={`h-24 w-24 rounded-full shadow-xl transition-all duration-300 hover:scale-105 active:scale-95 ${
+            isRecording ? "ring-4 ring-destructive/20" : "bg-moss hover:bg-moss/90"
+          }`}
+        >
+          {isRecording ? (
+            <Square className="h-10 w-10 fill-current" />
+          ) : (
+            <Mic className="h-10 w-10" />
+          )}
+        </Button>
       </div>
-      {error ? <p className="mt-3 text-sm font-medium text-red-700">{error}</p> : null}
-      </CardContent>
-    </Card>
+      
+      <p className={`mt-6 text-sm font-medium transition-colors duration-300 ${
+        isRecording ? "text-destructive animate-pulse" : "text-muted-foreground"
+      }`}>
+        {isRecording ? "Listening... Speak now" : "Tap to start recording"}
+      </p>
+
+      {error ? (
+        <p className="mt-4 rounded-full bg-destructive/10 px-4 py-1 text-xs font-semibold text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

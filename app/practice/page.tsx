@@ -31,19 +31,29 @@ export default async function PracticePage() {
       : fallbackItems;
 
   return (
-    <main className="mx-auto min-h-screen max-w-2xl px-4 py-6 sm:py-10">
-      <header className="mb-8 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-moss">Practice</p>
-          <h1 className="text-3xl font-semibold text-foreground">Pronunciation feedback</h1>
-        </div>
-        <Link href="/history" className={cn(buttonVariants({ variant: "outline" }), "shrink-0")}>
-          <Clock3 className="h-4 w-4" />
-          History
-        </Link>
-      </header>
+    <main className="min-h-screen">
+      <div className="mx-auto max-w-4xl px-6 py-8 sm:py-12">
+        <header className="mb-12 flex items-center justify-between gap-6">
+          <div className="space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-moss/60">Practice</p>
+            <h1 className="text-4xl font-black tracking-tight text-foreground sm:text-5xl">
+              Pronunciation.
+            </h1>
+          </div>
+          <Link 
+            href="/history" 
+            className={cn(
+              buttonVariants({ variant: "ghost" }), 
+              "group h-12 rounded-2xl bg-white/50 px-6 font-bold shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-all hover:bg-white"
+            )}
+          >
+            <Clock3 className="mr-2 h-4 w-4 text-moss transition-transform group-hover:-rotate-12" />
+            <span className="text-moss">History</span>
+          </Link>
+        </header>
 
-      <PracticeClient items={items} />
+        <PracticeClient items={items} />
+      </div>
     </main>
   );
 }

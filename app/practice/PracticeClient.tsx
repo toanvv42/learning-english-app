@@ -89,9 +89,12 @@ export function PracticeClient({ items }: PracticeClientProps) {
     { value: "meetings", label: "Meetings" },
     { value: "interviews", label: "Interviews" },
     { value: "travel", label: "Travel" },
+    { value: "social", label: "Social" },
+    { value: "shopping", label: "Shopping" },
   ];
   const focuses = [
     { value: "all", label: "All focus" },
+    { value: "general_fluency", label: "General Fluency" },
     { value: "ending_d", label: "Final /d/" },
     { value: "ending_t", label: "Final /t/" },
     { value: "ending_s", label: "Final /s/" },
@@ -309,26 +312,31 @@ export function PracticeClient({ items }: PracticeClientProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
       {showConfig ? (
-        <Card className="border-moss bg-moss/5">
-          <CardContent className="space-y-4 p-5">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-moss" />
-              <h2 className="text-lg font-bold text-moss">Configuration</h2>
+        <Card className="border-none bg-white/70 shadow-2xl backdrop-blur-xl ring-1 ring-black/5">
+          <CardContent className="space-y-8 p-8 sm:p-12">
+            <div className="text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-moss/10 text-moss">
+                <Settings className="h-8 w-8" />
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight text-foreground">Configuration</h2>
+              <p className="mt-3 text-muted-foreground">
+                {typeof window !== "undefined" && window.localStorage.getItem("learningEnglishGeminiModel")
+                  ? "Refine your practice experience."
+                  : "Welcome! Let's get everything ready for your first practice session."}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {typeof window !== "undefined" && window.localStorage.getItem("learningEnglishGeminiModel")
-                ? "Update your practice settings."
-                : "Welcome! Please choose your preferred Gemini model to get started."}
-            </p>
-            <div className="grid gap-4">
-              <label className="space-y-1">
-                <span className="text-sm font-medium text-foreground">Gemini model</span>
+
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                  Gemini Model
+                </label>
                 <select
                   value={geminiModel}
                   onChange={(event) => setGeminiModel(event.target.value as GeminiModel)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                  className="h-12 w-full rounded-xl border-none bg-field px-4 text-base shadow-sm ring-1 ring-black/5 transition-all focus:ring-2 focus:ring-moss"
                 >
                   {GEMINI_MODELS.map((option) => (
                     <option value={option.value} key={option.value}>
@@ -336,87 +344,112 @@ export function PracticeClient({ items }: PracticeClientProps) {
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Gemini 2.5 Flash is recommended for the best balance of speed and accuracy.
                 </p>
-              </label>
+              </div>
 
-              <div className="space-y-3 rounded-md border bg-background px-3 py-3">
-                <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-medium text-foreground">Use browser Gemini key</span>
+              <div className="rounded-2xl bg-field p-6 ring-1 ring-black/5">
+                <div className="mb-4 flex items-center justify-between">
+                  <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                    Browser Gemini Key
+                  </label>
                   <input
                     type="checkbox"
                     checked={useBrowserGemini}
                     onChange={(event) => setUseBrowserGemini(event.target.checked)}
                     disabled={!hasBrowserGeminiKey}
-                    className="h-4 w-4 accent-moss"
+                    className="h-5 w-5 rounded-md border-none bg-white text-moss ring-1 ring-black/10 focus:ring-2 focus:ring-moss"
                   />
-                </label>
-                {hasBrowserGeminiKey ? (
-                  <p className="text-sm text-muted-foreground">A Gemini key is saved in this browser.</p>
-                ) : null}
-                <div className="flex gap-2">
+                </div>
+                
+                <div className="flex flex-col gap-3">
                   <input
                     type="password"
                     value={browserGeminiKeyInput}
                     onChange={(event) => setBrowserGeminiKeyInput(event.target.value)}
-                    placeholder="Gemini API key"
-                    className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                    placeholder="Enter your Gemini API key"
+                    className="h-11 rounded-xl border-none bg-white px-4 text-sm shadow-sm ring-1 ring-black/5 transition-all focus:ring-2 focus:ring-moss"
                   />
-                  <Button type="button" variant="outline" size="sm" onClick={saveBrowserGeminiKey}>
-                    Save key
-                  </Button>
-                  {hasBrowserGeminiKey ? (
-                    <Button type="button" variant="outline" size="sm" onClick={removeBrowserGeminiKey}>
-                      Remove
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="secondary" 
+                      className="flex-1 rounded-xl bg-white text-moss hover:bg-white/80" 
+                      onClick={saveBrowserGeminiKey}
+                    >
+                      Save Key
                     </Button>
-                  ) : null}
+                    {hasBrowserGeminiKey && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        className="rounded-xl text-destructive hover:bg-destructive/5 hover:text-destructive" 
+                        onClick={removeBrowserGeminiKey}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                {hasBrowserGeminiKey && (
+                  <p className="mt-3 text-xs text-moss/70">A Gemini key is currently saved in this browser.</p>
+                )}
               </div>
 
-              <label className="flex items-center justify-between gap-3 rounded-md border bg-background px-3 py-3">
-                <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Save className="h-4 w-4 text-moss" />
-                  Save audio to R2
+              <label className="flex items-center justify-between rounded-2xl bg-field p-6 ring-1 ring-black/5">
+                <span className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                  Save Audio recordings
                 </span>
                 <input
                   type="checkbox"
                   checked={saveAudio}
                   onChange={(event) => setSaveAudio(event.target.checked)}
-                  className="h-4 w-4 accent-moss"
+                  className="h-5 w-5 rounded-md border-none bg-white text-moss ring-1 ring-black/10 focus:ring-2 focus:ring-moss"
                 />
               </label>
             </div>
-            <Button className="w-full bg-moss text-white hover:bg-moss/90" onClick={saveConfig}>
+
+            <Button 
+              className="h-14 w-full rounded-2xl bg-moss text-lg font-bold text-white shadow-xl shadow-moss/20 hover:bg-moss/90 hover:shadow-2xl hover:shadow-moss/30" 
+              onClick={saveConfig}
+            >
               Save and Continue
             </Button>
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="space-y-4 p-5">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-moss" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-moss">Practice settings</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex h-8 gap-1 text-moss"
-                onClick={() => setShowConfig(true)}
-              >
-                <Settings className="h-4 w-4" />
-                Config
-              </Button>
+        <div className="space-y-8 animate-in fade-in duration-700">
+          <div className="flex items-center justify-between gap-4 px-2">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="rounded-full bg-moss/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-moss ring-1 ring-moss/20">
+                {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
+              </Badge>
+              {useBrowserGemini && (
+                <Badge variant="secondary" className="rounded-full bg-copper/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20">
+                  Browser Key
+                </Badge>
+              )}
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1">
-                <span className="text-sm font-medium text-foreground">Topic</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="group flex h-10 items-center gap-2 rounded-full px-4 text-moss hover:bg-moss/5"
+              onClick={() => setShowConfig(true)}
+            >
+              <Settings className="h-4 w-4 transition-transform group-hover:rotate-45" />
+              <span className="text-sm font-bold uppercase tracking-widest">Config</span>
+            </Button>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.2em] text-moss/60">Topic</span>
                 <select
                   value={topic}
                   onChange={(event) => updateTopic(event.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                  className="h-11 w-full rounded-2xl border-none bg-white/50 px-4 text-sm shadow-sm ring-1 ring-black/5 transition-all focus:bg-white focus:ring-2 focus:ring-moss"
                 >
                   {topics.map((option) => (
                     <option value={option.value} key={option.value}>
@@ -424,13 +457,13 @@ export function PracticeClient({ items }: PracticeClientProps) {
                     </option>
                   ))}
                 </select>
-              </label>
-              <label className="space-y-1">
-                <span className="text-sm font-medium text-foreground">Focus</span>
+              </div>
+              <div className="space-y-1.5">
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.2em] text-moss/60">Focus</span>
                 <select
                   value={focus}
                   onChange={(event) => updateFocus(event.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
+                  className="h-11 w-full rounded-2xl border-none bg-white/50 px-4 text-sm shadow-sm ring-1 ring-black/5 transition-all focus:bg-white focus:ring-2 focus:ring-moss"
                 >
                   {focuses.map((option) => (
                     <option value={option.value} key={option.value}>
@@ -438,118 +471,117 @@ export function PracticeClient({ items }: PracticeClientProps) {
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="font-normal">
-                {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
-              </Badge>
-              {useBrowserGemini && (
-                <Badge variant="secondary" className="font-normal">
-                  Browser Key
-                </Badge>
-              )}
-              {saveAudio && (
-                <Badge variant="secondary" className="font-normal">
-                  R2 Storage
-                </Badge>
-              )}
-            </div>
-            {filteredItems.length === 0 ? (
-              <Alert>
-                <AlertTitle>No exact match</AlertTitle>
-                <AlertDescription>
-                  Showing all sentences until more seed items are added for this combination.
+
+            {filteredItems.length === 0 && (
+              <Alert className="rounded-2xl border-none bg-copper/10 text-copper ring-1 ring-copper/20">
+                <AlertDescription className="text-xs font-bold uppercase tracking-widest">
+                  Showing all sentences until more seeds are added.
                 </AlertDescription>
               </Alert>
-            ) : null}
-          </CardContent>
-        </Card>
+            )}
+          </div>
+
+          <div className="space-y-8">
+            <div className="group relative">
+              <div className="absolute -inset-1 rounded-[2.5rem] bg-gradient-to-r from-moss/20 to-copper/20 opacity-0 blur transition duration-1000 group-hover:opacity-100 group-hover:duration-200" />
+              <div className="relative">
+                <TargetSentence text={item.content} />
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-6">
+              <div className="flex items-center gap-4 text-sm font-bold uppercase tracking-[0.2em] text-moss/40">
+                <span>Sentence {itemIndex + 1} of {activeItems.length}</span>
+                <div className="h-1 w-1 rounded-full bg-moss/20" />
+                <Button
+                  type="button"
+                  onClick={nextSentence}
+                  disabled={isBusy || activeItems.length <= 1}
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0 text-moss hover:bg-transparent hover:text-moss/80"
+                >
+                  Skip
+                </Button>
+              </div>
+
+              <Recorder disabled={isBusy} onRecordingComplete={handleRecordingComplete} />
+            </div>
+          </div>
+
+          {isBusy && (
+            <div className="flex flex-col items-center py-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-4 h-1 w-48 overflow-hidden rounded-full bg-moss/10">
+                <div className="h-full w-1/3 animate-[progress_2s_ease-in-out_infinite] rounded-full bg-moss" />
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-moss/60">
+                {step === "saving"
+                  ? "Saving audio..."
+                  : step === "transcribing"
+                    ? "Transcribing..."
+                    : "Analyzing pronunciation..."}
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-6">
+            {recordingUrl && (
+              <Card className="overflow-hidden border-none bg-white/50 shadow-sm backdrop-blur-sm ring-1 ring-black/5">
+                <CardContent className="p-4">
+                  <div className="mb-3 flex items-center gap-2 px-2">
+                    <Volume2 className="h-3 w-3 text-moss/60" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-moss/60">Review recording</span>
+                  </div>
+                  <audio controls src={recordingUrl} className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            )}
+
+            {transcript && (
+              <div className="px-6 text-center">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-moss/40">Gemini heard</p>
+                <p className="text-xl font-medium text-foreground/80">"{transcript}"</p>
+              </div>
+            )}
+
+            {feedback && (
+              <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
+                <FeedbackCard feedback={feedback} />
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive" className="rounded-2xl border-none shadow-lg shadow-destructive/10">
+                <AlertTitle className="text-sm font-bold uppercase tracking-widest">Error</AlertTitle>
+                <AlertDescription className="text-xs">{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {(step === "complete" || step === "error") && (
+              <Button
+                type="button"
+                onClick={resetAttempt}
+                variant="outline"
+                size="lg"
+                className="h-16 w-full rounded-2xl border-none bg-white shadow-xl shadow-black/5 ring-1 ring-black/5 transition-all hover:scale-[1.02] hover:bg-white active:scale-[0.98]"
+              >
+                <RotateCcw className="mr-2 h-5 w-5 text-moss" />
+                <span className="text-lg font-bold text-moss">Try another attempt</span>
+              </Button>
+            )}
+          </div>
+        </div>
       )}
 
-      {!showConfig && isInitialized && (
-        <>
-          <TargetSentence text={item.content} />
-          <div className="flex flex-wrap gap-2">
-            {item.tags.map((tag) => (
-              <Badge key={tag} variant="outline">
-                {tag.replaceAll("_", " ")}
-              </Badge>
-            ))}
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium text-muted-foreground">
-              Sentence {itemIndex + 1} of {activeItems.length}
-            </p>
-            <Button
-              type="button"
-              onClick={nextSentence}
-              disabled={isBusy || activeItems.length <= 1}
-              variant="outline"
-              size="sm"
-            >
-              <SkipForward className="h-4 w-4" />
-              Next sentence
-            </Button>
-          </div>
-          <Recorder disabled={isBusy} onRecordingComplete={handleRecordingComplete} />
-
-          {recordingUrl ? (
-            <Card>
-              <CardContent className="p-5">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-moss">
-                  <Volume2 className="h-4 w-4" />
-                  Your recording
-                </p>
-                <audio controls src={recordingUrl} className="mt-3 w-full" />
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {isBusy ? (
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-moss">Status</p>
-                <p className="mt-2 text-foreground">
-                  {step === "saving"
-                    ? "Saving audio to R2..."
-                    : step === "transcribing"
-                      ? "Transcribing speech..."
-                      : "Generating feedback..."}
-                </p>
-                <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-2/3 animate-pulse rounded-full bg-moss" />
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {transcript ? (
-            <Card>
-              <CardContent className="p-5">
-                <p className="text-xs font-semibold uppercase tracking-wider text-moss">Transcript</p>
-                <p className="mt-2 text-foreground">{transcript}</p>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {feedback ? <FeedbackCard feedback={feedback} /> : null}
-
-          {error ? (
-            <Alert variant="destructive">
-              <AlertTitle>Something went wrong</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
-          {step === "complete" || step === "error" ? (
-            <Button type="button" onClick={resetAttempt} variant="outline" size="lg" className="w-full">
-              <RotateCcw className="h-4 w-4" />
-              Try another attempt
-            </Button>
-          ) : null}
-        </>
-      )}
+      <style jsx global>{`
+        @keyframes progress {
+          0% { transform: translateX(-100%); }
+          50% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
     </div>
   );
 }
