@@ -19,5 +19,8 @@ jobs:
       - name: Install gitleaks
         run: go install github.com/zricethezav/gitleaks/v8@v8.30.0
 
+      - name: Add gitleaks to PATH
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
       - name: Scan repository
         run: gitleaks detect --source . --redact --no-banner --exit-code 1
