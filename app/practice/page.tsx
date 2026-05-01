@@ -1,9 +1,15 @@
+import { Metadata } from "next";
 import Link from "next/link";
 import { Clock3 } from "lucide-react";
 import { PracticeClient } from "@/app/practice/PracticeClient";
 import { buttonVariants } from "@/components/ui/button";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Daily Practice",
+  description: "Improve your pronunciation with targeted AI feedback on specific topics and sounds.",
+};
 
 const fallbackItems = [{
   id: null,

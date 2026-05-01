@@ -1,7 +1,7 @@
 import type { AIFeedback } from "@/types/feedback";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Info, Lightbulb, MessageCircle, Star, Target } from "lucide-react";
+import { Info, Lightbulb, MessageCircle, Star, Target } from "lucide-react";
 
 type FeedbackCardProps = {
   feedback: AIFeedback;
@@ -42,7 +42,7 @@ export function FeedbackCard({ feedback }: FeedbackCardProps) {
           
           <p className="mt-6 flex items-center gap-2 text-sm font-medium italic opacity-90">
             <MessageCircle className="h-4 w-4" />
-            "{feedback.encouragement}"
+            &quot;{feedback.encouragement}&quot;
           </p>
         </div>
 
@@ -52,14 +52,14 @@ export function FeedbackCard({ feedback }: FeedbackCardProps) {
               <Star className="h-4 w-4 text-moss/40" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">What you said</span>
             </div>
-            <p className="text-lg font-medium text-foreground">"{feedback.what_you_said}"</p>
+            <p className="text-lg font-medium text-foreground">&quot;{feedback.what_you_said}&quot;</p>
           </div>
           <div className="bg-white p-6 transition-colors hover:bg-field/50">
             <div className="mb-2 flex items-center gap-2">
               <Target className="h-4 w-4 text-moss/40" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Expected</span>
             </div>
-            <p className="text-lg font-medium text-foreground">"{feedback.what_was_expected}"</p>
+            <p className="text-lg font-medium text-foreground">&quot;{feedback.what_was_expected}&quot;</p>
           </div>
         </div>
 

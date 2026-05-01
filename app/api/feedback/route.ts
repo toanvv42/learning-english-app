@@ -3,6 +3,7 @@ import { z } from "zod";
 import { feedbackSchema, generateFeedback } from "@/lib/gemini/feedback";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { type GeminiModel } from "@/lib/gemini/models";
+import { enforceUserRateLimit } from "@/lib/rateLimit";
 
 const requestSchema = z.object({
   itemId: z.string().uuid().nullable(),
@@ -22,6 +23,16 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimitResponse = await enforceUserRateLimit(supabase, {
+      route: "feedback",
+      limit: 30,
+      windowSeconds: 60 * 60,
+    });
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const body = requestSchema.parse(await request.json());

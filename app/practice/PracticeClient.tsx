@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RotateCcw, Save, Settings, SkipForward, SlidersHorizontal, Volume2 } from "lucide-react";
+import { RotateCcw, Settings, Volume2 } from "lucide-react";
 import { FeedbackCard } from "@/components/FeedbackCard";
 import { Recorder } from "@/components/Recorder";
 import { TargetSentence } from "@/components/TargetSentence";
@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { generateFeedbackWithBrowserGemini, transcribeWithBrowserGemini } from "@/app/practice/browserGemini";
 import type { AIFeedback } from "@/types/feedback";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS, type GeminiModel } from "@/lib/gemini/models";
+import { formatAudioLimit, MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS } from "@/lib/audioLimits";
 
 type PracticeItem = {
   id: string | null;
@@ -63,6 +64,33 @@ async function parseApiResponse<T>(response: Response, fallbackMessage: string):
   return body as T;
 }
 
+const topics = [
+  { value: "all", label: "All topics" },
+  { value: "devops", label: "DevOps" },
+  { value: "cloud", label: "Cloud" },
+  { value: "daily", label: "Daily life" },
+  { value: "work", label: "Work" },
+  { value: "meetings", label: "Meetings" },
+  { value: "interviews", label: "Interviews" },
+  { value: "travel", label: "Travel" },
+  { value: "social", label: "Social" },
+  { value: "shopping", label: "Shopping" },
+];
+
+const focuses = [
+  { value: "all", label: "All focus" },
+  { value: "general_fluency", label: "General Fluency" },
+  { value: "ending_d", label: "Final /d/" },
+  { value: "ending_t", label: "Final /t/" },
+  { value: "ending_s", label: "Final /s/" },
+  { value: "past_tense", label: "-ed endings" },
+  { value: "plural_s", label: "Plural -s" },
+  { value: "theta", label: "TH sound" },
+  { value: "sh", label: "SH sound" },
+  { value: "ch", label: "CH sound" },
+  { value: "minimal_pair", label: "Minimal pairs" },
+];
+
 export function PracticeClient({ items }: PracticeClientProps) {
   const [itemIndex, setItemIndex] = useState(0);
   const [step, setStep] = useState<Step>("idle");
@@ -78,33 +106,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [useBrowserGemini, setUseBrowserGemini] = useState(false);
   const [geminiModel, setGeminiModel] = useState<GeminiModel>(DEFAULT_GEMINI_MODEL);
   const [showConfig, setShowConfig] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
 
-  const topics = [
-    { value: "all", label: "All topics" },
-    { value: "devops", label: "DevOps" },
-    { value: "cloud", label: "Cloud" },
-    { value: "daily", label: "Daily life" },
-    { value: "work", label: "Work" },
-    { value: "meetings", label: "Meetings" },
-    { value: "interviews", label: "Interviews" },
-    { value: "travel", label: "Travel" },
-    { value: "social", label: "Social" },
-    { value: "shopping", label: "Shopping" },
-  ];
-  const focuses = [
-    { value: "all", label: "All focus" },
-    { value: "general_fluency", label: "General Fluency" },
-    { value: "ending_d", label: "Final /d/" },
-    { value: "ending_t", label: "Final /t/" },
-    { value: "ending_s", label: "Final /s/" },
-    { value: "past_tense", label: "-ed endings" },
-    { value: "plural_s", label: "Plural -s" },
-    { value: "theta", label: "TH sound" },
-    { value: "sh", label: "SH sound" },
-    { value: "ch", label: "CH sound" },
-    { value: "minimal_pair", label: "Minimal pairs" },
-  ];
   const filteredItems = items.filter((practiceItem) => {
     const matchesTopic = topic === "all" || practiceItem.tags.includes(topic);
     const matchesFocus = focus === "all" || practiceItem.tags.includes(focus);
@@ -131,6 +133,8 @@ export function PracticeClient({ items }: PracticeClientProps) {
   useEffect(() => {
     const savedKey = window.localStorage.getItem("learningEnglishGeminiKey");
     const savedModel = window.localStorage.getItem("learningEnglishGeminiModel") as GeminiModel;
+    const savedTopic = window.localStorage.getItem("learningEnglishPracticeTopic");
+    const savedFocus = window.localStorage.getItem("learningEnglishPracticeFocus");
 
     setHasBrowserGeminiKey(Boolean(savedKey));
     setUseBrowserGemini(Boolean(savedKey));
@@ -141,7 +145,13 @@ export function PracticeClient({ items }: PracticeClientProps) {
       setShowConfig(true);
     }
 
-    setIsInitialized(true);
+    if (savedTopic && topics.some((t) => t.value === savedTopic)) {
+      setTopic(savedTopic);
+    }
+
+    if (savedFocus && focuses.some((f) => f.value === savedFocus)) {
+      setFocus(savedFocus);
+    }
   }, []);
 
   useEffect(() => {
@@ -176,10 +186,22 @@ export function PracticeClient({ items }: PracticeClientProps) {
 
   function saveConfig() {
     window.localStorage.setItem("learningEnglishGeminiModel", geminiModel);
+    window.localStorage.setItem("learningEnglishPracticeTopic", topic);
+    window.localStorage.setItem("learningEnglishPracticeFocus", focus);
     setShowConfig(false);
+    setItemIndex(0);
+    clearAttemptState();
   }
 
   async function handleRecordingComplete(blob: Blob) {
+    if (blob.size > MAX_AUDIO_BYTES) {
+      setError(
+        `Recording is too large. Keep it under ${MAX_RECORDING_SECONDS} seconds and ${formatAudioLimit()}.`,
+      );
+      setStep("error");
+      return;
+    }
+
     setStep(saveAudio ? "saving" : "transcribing");
     setError(null);
     setTranscript(null);
@@ -299,18 +321,6 @@ export function PracticeClient({ items }: PracticeClientProps) {
     setItemIndex((current) => (current + 1) % activeItems.length);
   }
 
-  function updateTopic(value: string) {
-    clearAttemptState();
-    setTopic(value);
-    setItemIndex(0);
-  }
-
-  function updateFocus(value: string) {
-    clearAttemptState();
-    setFocus(value);
-    setItemIndex(0);
-  }
-
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:py-12">
       {showConfig ? (
@@ -329,6 +339,41 @@ export function PracticeClient({ items }: PracticeClientProps) {
             </div>
 
             <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                    Topic
+                  </label>
+                  <select
+                    value={topic}
+                    onChange={(event) => setTopic(event.target.value)}
+                    className="h-12 w-full rounded-xl border-none bg-field px-4 text-base shadow-sm ring-1 ring-black/5 transition-all focus:ring-2 focus:ring-moss"
+                  >
+                    {topics.map((option) => (
+                      <option value={option.value} key={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                    Focus
+                  </label>
+                  <select
+                    value={focus}
+                    onChange={(event) => setFocus(event.target.value)}
+                    className="h-12 w-full rounded-xl border-none bg-field px-4 text-base shadow-sm ring-1 ring-black/5 transition-all focus:ring-2 focus:ring-moss"
+                  >
+                    {focuses.map((option) => (
+                      <option value={option.value} key={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
                   Gemini Model
@@ -358,7 +403,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                     type="checkbox"
                     checked={useBrowserGemini}
                     onChange={(event) => setUseBrowserGemini(event.target.checked)}
-                    disabled={!hasBrowserGeminiKey}
+                    disabled={!hasBrowserGeminiKey || isBusy}
                     className="h-5 w-5 rounded-md border-none bg-white text-moss ring-1 ring-black/10 focus:ring-2 focus:ring-moss"
                   />
                 </div>
@@ -377,6 +422,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                       variant="secondary" 
                       className="flex-1 rounded-xl bg-white text-moss hover:bg-white/80" 
                       onClick={saveBrowserGeminiKey}
+                      disabled={isBusy}
                     >
                       Save Key
                     </Button>
@@ -386,6 +432,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                         variant="ghost" 
                         className="rounded-xl text-destructive hover:bg-destructive/5 hover:text-destructive" 
                         onClick={removeBrowserGeminiKey}
+                        disabled={isBusy}
                       >
                         Remove
                       </Button>
@@ -405,6 +452,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                   type="checkbox"
                   checked={saveAudio}
                   onChange={(event) => setSaveAudio(event.target.checked)}
+                  disabled={isBusy}
                   className="h-5 w-5 rounded-md border-none bg-white text-moss ring-1 ring-black/10 focus:ring-2 focus:ring-moss"
                 />
               </label>
@@ -413,6 +461,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
             <Button 
               className="h-14 w-full rounded-2xl bg-moss text-lg font-bold text-white shadow-xl shadow-moss/20 hover:bg-moss/90 hover:shadow-2xl hover:shadow-moss/30" 
               onClick={saveConfig}
+              disabled={isBusy}
             >
               Save and Continue
             </Button>
@@ -422,11 +471,17 @@ export function PracticeClient({ items }: PracticeClientProps) {
         <div className="space-y-8 animate-in fade-in duration-700">
           <div className="flex items-center justify-between gap-4 px-2">
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary" className="rounded-full bg-moss/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-moss ring-1 ring-moss/20">
+              <Badge variant="secondary" className="rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
+                {topics.find((t) => t.value === topic)?.label}
+              </Badge>
+              <Badge variant="secondary" className="rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
+                {focuses.find((f) => f.value === focus)?.label}
+              </Badge>
+              <Badge variant="secondary" className="rounded-full bg-moss/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss ring-1 ring-moss/20">
                 {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
               </Badge>
               {useBrowserGemini && (
-                <Badge variant="secondary" className="rounded-full bg-copper/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20">
+                <Badge variant="secondary" className="rounded-full bg-copper/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20">
                   Browser Key
                 </Badge>
               )}
@@ -436,6 +491,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
               size="sm"
               className="group flex h-10 items-center gap-2 rounded-full px-4 text-moss hover:bg-moss/5"
               onClick={() => setShowConfig(true)}
+              disabled={isBusy}
             >
               <Settings className="h-4 w-4 transition-transform group-hover:rotate-45" />
               <span className="text-sm font-bold uppercase tracking-widest">Config</span>
@@ -443,41 +499,10 @@ export function PracticeClient({ items }: PracticeClientProps) {
           </div>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.2em] text-moss/60">Topic</span>
-                <select
-                  value={topic}
-                  onChange={(event) => updateTopic(event.target.value)}
-                  className="h-11 w-full rounded-2xl border-none bg-white/50 px-4 text-sm shadow-sm ring-1 ring-black/5 transition-all focus:bg-white focus:ring-2 focus:ring-moss"
-                >
-                  {topics.map((option) => (
-                    <option value={option.value} key={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <span className="ml-2 text-[10px] font-bold uppercase tracking-[0.2em] text-moss/60">Focus</span>
-                <select
-                  value={focus}
-                  onChange={(event) => updateFocus(event.target.value)}
-                  className="h-11 w-full rounded-2xl border-none bg-white/50 px-4 text-sm shadow-sm ring-1 ring-black/5 transition-all focus:bg-white focus:ring-2 focus:ring-moss"
-                >
-                  {focuses.map((option) => (
-                    <option value={option.value} key={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {filteredItems.length === 0 && (
               <Alert className="rounded-2xl border-none bg-copper/10 text-copper ring-1 ring-copper/20">
                 <AlertDescription className="text-xs font-bold uppercase tracking-widest">
-                  Showing all sentences until more seeds are added.
+                  Showing all sentences until more seeds are added for this topic/focus.
                 </AlertDescription>
               </Alert>
             )}
@@ -542,7 +567,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
             {transcript && (
               <div className="px-6 text-center">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-moss/40">Gemini heard</p>
-                <p className="text-xl font-medium text-foreground/80">"{transcript}"</p>
+                <p className="text-xl font-medium text-foreground/80">&quot;{transcript}&quot;</p>
               </div>
             )}
 

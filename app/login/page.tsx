@@ -1,6 +1,12 @@
+import { Metadata } from "next";
 import { Suspense } from "react";
 import { LoginForm } from "@/app/login/LoginForm";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+  description: "Sign in to LingoFlow to start your personalized pronunciation practice.",
+};
 
 export default function LoginPage() {
   return (

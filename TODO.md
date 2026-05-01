@@ -50,7 +50,7 @@
 
 - [x] Add `AIFeedback` TypeScript type.
 - [x] Build Vietnamese-speaker-aware Gemini system prompt.
-- [x] Call `gemini-2.5-flash`.
+- [x] Call Gemini (user selected model).
 - [x] Strip markdown fences before JSON parsing.
 - [x] Validate feedback shape.
 - [x] Build `POST /api/feedback`.

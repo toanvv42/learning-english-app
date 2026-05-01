@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import Link from "next/link";
 import { Mic2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -7,6 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { AIFeedback } from "@/types/feedback";
+
+export const metadata: Metadata = {
+  title: "Practice History",
+  description: "Review your past pronunciation attempts and track your progress over time.",
+};
 
 type RecordingRow = {
   id: string;
@@ -95,11 +101,11 @@ export default async function HistoryPage() {
                   <div className="space-y-6">
                     <div className="space-y-1.5">
                       <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-moss/40">Target</span>
-                      <p className="text-lg font-medium text-foreground/80 italic font-serif leading-snug">"{recording.target_text}"</p>
+                      <p className="text-lg font-medium text-foreground/80 italic font-serif leading-snug">&quot;{recording.target_text}&quot;</p>
                     </div>
                     <div className="space-y-1.5">
                       <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-moss/40">Transcript</span>
-                      <p className="text-lg font-medium text-foreground">"{recording.transcript}"</p>
+                      <p className="text-lg font-medium text-foreground">&quot;{recording.transcript}&quot;</p>
                     </div>
                   </div>
                   <div className="rounded-2xl bg-copper/5 p-6 ring-1 ring-copper/10 group-hover:bg-copper/10 transition-colors">

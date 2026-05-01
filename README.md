@@ -51,7 +51,8 @@ npm run dev
 2. Enable email auth.
 3. Paste `seed/schema.sql` into the SQL editor and run it.
 4. Paste `seed/items.sql` into the SQL editor and run it.
-5. Copy the project URL and anon key into `.env.local`.
+5. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
+6. Copy the project URL and anon key into `.env.local`.
 
 The schema enables RLS. `items` are readable by authenticated users, and every `recordings` policy is restricted with `auth.uid() = user_id`.
 

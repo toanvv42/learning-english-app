@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MAX_RECORDING_SECONDS } from "@/lib/audioLimits";
 
 type RecorderProps = {
   disabled?: boolean;
@@ -15,6 +16,22 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const timeoutRef = useRef<number | null>(null);
+  const intervalRef = useRef<number | null>(null);
+  const stopRequestedRef = useRef(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  function clearRecordingTimers() {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }
 
   async function startRecording() {
     setError(null);
@@ -28,6 +45,8 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
       chunksRef.current = [];
       streamRef.current = stream;
       mediaRecorderRef.current = recorder;
+      stopRequestedRef.current = false;
+      setElapsedSeconds(0);
 
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -36,15 +55,24 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
       };
 
       recorder.onstop = () => {
+        clearRecordingTimers();
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         mediaRecorderRef.current = null;
+        stopRequestedRef.current = false;
         setIsRecording(false);
         onRecordingComplete(blob);
       };
 
       recorder.start();
+      intervalRef.current = window.setInterval(() => {
+        setElapsedSeconds((current) => Math.min(current + 1, MAX_RECORDING_SECONDS));
+      }, 1000);
+      timeoutRef.current = window.setTimeout(() => {
+        setError(`Recording stopped at ${MAX_RECORDING_SECONDS} seconds. Try one sentence at a time.`);
+        stopRecording();
+      }, MAX_RECORDING_SECONDS * 1000);
       setIsRecording(true);
     } catch {
       setError("Microphone permission was denied or unavailable.");
@@ -53,15 +81,39 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
   }
 
   function stopRecording() {
-    mediaRecorderRef.current?.stop();
+    if (stopRequestedRef.current) {
+      return;
+    }
+
+    clearRecordingTimers();
+    const recorder = mediaRecorderRef.current;
+
+    if (recorder?.state === "recording") {
+      stopRequestedRef.current = true;
+      recorder.requestData();
+      recorder.stop();
+      return;
+    }
+
     streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    mediaRecorderRef.current = null;
+    stopRequestedRef.current = false;
+    setIsRecording(false);
   }
+
+  useEffect(() => {
+    return () => {
+      clearRecordingTimers();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center py-8">
       <div className="relative">
         {isRecording && (
-          <div className="absolute inset-0 animate-ping rounded-full bg-destructive/20" />
+          <div className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-destructive/20" />
         )}
         <Button
           type="button"
@@ -83,7 +135,9 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
       <p className={`mt-6 text-sm font-medium transition-colors duration-300 ${
         isRecording ? "text-destructive animate-pulse" : "text-muted-foreground"
       }`}>
-        {isRecording ? "Listening... Speak now" : "Tap to start recording"}
+        {isRecording
+          ? `Listening... ${Math.max(MAX_RECORDING_SECONDS - elapsedSeconds, 0)}s left`
+          : "Tap to start recording"}
       </p>
 
       {error ? (

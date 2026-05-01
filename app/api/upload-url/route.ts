@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createR2Client, getR2PublicUrl } from "@/lib/r2/client";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireEnv } from "@/lib/env";
+import { enforceUserRateLimit } from "@/lib/rateLimit";
 
 const requestSchema = z.object({
   contentType: z.literal("audio/webm"),
@@ -19,6 +20,16 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const rateLimitResponse = await enforceUserRateLimit(supabase, {
+      route: "upload-url",
+      limit: 30,
+      windowSeconds: 60 * 60,
+    });
+
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
     const body = requestSchema.parse(await request.json());
