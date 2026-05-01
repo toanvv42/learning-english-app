@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks is required to push this repository."
+  echo "Install gitleaks and try again."
+  exit 1
+fi
+
+exec ./scripts/scan-secrets.sh

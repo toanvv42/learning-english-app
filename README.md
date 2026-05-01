@@ -81,6 +81,7 @@ npm run typecheck
 npm run lint
 npm run build
 npm run pages:build
+npm run secrets:scan
 ```
 
 ## Deploy To Cloudflare Pages
@@ -92,6 +93,19 @@ npm run pages:build
 ```
 
 Set the same environment variables in Cloudflare Pages. The generated output is handled by `@cloudflare/next-on-pages`.
+
+## GitHub And Secrets
+
+This repo uses `gitleaks` in two places:
+
+- `npm run secrets:scan` for local checks
+- `.github/workflows/gitleaks.yml` for push and pull request checks
+
+The tracked hook at `.githooks/pre-push` runs the same scan before a push. Enable it once per clone with:
+
+```bash
+git config core.hooksPath .githooks
+```
 
 ## Notes
 
