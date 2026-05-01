@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: 44 43% 98%;
+  --foreground: 138 23% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 138 23% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 138 23% 11%;
+  --primary: 138 23% 11%;
+  --primary-foreground: 42 45% 96%;
+  --secondary: 42 22% 93%;
+  --secondary-foreground: 138 23% 11%;
+  --muted: 42 22% 93%;
+  --muted-foreground: 29 6% 38%;
+  --accent: 133 15% 91%;
+  --accent-foreground: 138 23% 11%;
+  --destructive: 4 67% 38%;
+  --destructive-foreground: 42 45% 96%;
+  --border: 38 18% 86%;
+  --input: 38 18% 86%;
+  --ring: 137 13% 40%;
+  --radius: 0.5rem;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(83, 115, 90, 0.14), transparent 30rem),
+    hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
