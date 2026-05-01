@@ -132,6 +132,7 @@ Do not set the Cloudflare deploy command to `opennextjs-cloudflare deploy` unles
 Manual build and deploy:
 
 ```bash
+CLOUDFLARE_API_TOKEN=your-token CLOUDFLARE_ACCOUNT_ID=your-account-id \
 npm run pages:deploy
 ```
 
