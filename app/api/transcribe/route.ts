@@ -6,6 +6,7 @@ import { transcribeAudioBlob } from "@/lib/gemini/transcribe";
 import { type GeminiModel } from "@/lib/gemini/models";
 import { formatAudioLimit, MAX_AUDIO_BYTES } from "@/lib/audioLimits";
 import { enforceUserRateLimit } from "@/lib/rateLimit";
+import { getUserGeminiApiKey } from "@/lib/gemini/userKey";
 
 const requestSchema = z.object({
   objectKey: z.string().min(1),
@@ -65,7 +66,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const transcript = await transcribeAudioBlob(audioBlob, selectedModel);
+    const userGeminiApiKey = await getUserGeminiApiKey(supabase, user.id);
+    const transcript = await transcribeAudioBlob(audioBlob, selectedModel, userGeminiApiKey);
 
     return NextResponse.json({ transcript });
   } catch (error) {

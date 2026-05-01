@@ -1,8 +1,7 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { z } from "zod";
-import { requireEnv } from "@/lib/env";
 import { primaryIssues, type AIFeedback } from "@/types/feedback";
 import { DEFAULT_GEMINI_MODEL, type GeminiModel } from "./models";
+import { generateGeminiText } from "./rest";
 
 export const feedbackSchema = z.object({
   overall_score: z.number().int().min(1).max(10),
@@ -72,6 +71,7 @@ export async function generateFeedback(input: {
   targetText: string;
   transcript: string;
   model?: GeminiModel;
+  apiKey?: string | null;
 }): Promise<AIFeedback> {
   if (isWrongSentence(input.targetText, input.transcript)) {
     return {
@@ -86,53 +86,27 @@ export async function generateFeedback(input: {
     };
   }
 
-  const ai = new GoogleGenAI({
-    apiKey: requireEnv("GEMINI_API_KEY"),
-  });
-
-  const response = await ai.models.generateContent({
-    model: input.model || DEFAULT_GEMINI_MODEL,
-    contents: `Target sentence: ${input.targetText}\nGemini transcript: ${input.transcript}`,
-    config: {
-      systemInstruction: systemPrompt,
-      temperature: 0.2,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          overall_score: {
-            type: Type.NUMBER,
-            minimum: 1,
-            maximum: 10,
+  const text = await generateGeminiText({
+    contents: [
+      {
+        parts: [
+          {
+            text: `${systemPrompt}\n\nTarget sentence: ${input.targetText}\nGemini transcript: ${input.transcript}`,
           },
-          primary_issue: {
-            type: Type.STRING,
-            enum: [...primaryIssues],
-          },
-          what_you_said: { type: Type.STRING },
-          what_was_expected: { type: Type.STRING },
-          specific_fix: { type: Type.STRING },
-          vietnamese_tip: { type: Type.STRING },
-          encouragement: { type: Type.STRING },
-        },
-        required: [
-          "overall_score",
-          "primary_issue",
-          "what_you_said",
-          "what_was_expected",
-          "specific_fix",
-          "vietnamese_tip",
-          "encouragement",
         ],
       },
+    ],
+    generationConfig: {
+      temperature: 0.2,
+      responseMimeType: "application/json",
     },
-  });
+  }, input.model || DEFAULT_GEMINI_MODEL, input.apiKey || undefined);
 
-  if (!response.text) {
+  if (!text) {
     throw new Error("Gemini did not return feedback text.");
   }
 
-  const parsed = JSON.parse(stripJsonFences(response.text)) as unknown;
+  const parsed = JSON.parse(stripJsonFences(text)) as unknown;
 
   if (typeof parsed === "object" && parsed !== null && "overall_score" in parsed) {
     const feedback = parsed as Record<string, unknown>;

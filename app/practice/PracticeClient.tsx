@@ -9,7 +9,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { generateFeedbackWithBrowserGemini, transcribeWithBrowserGemini } from "@/app/practice/browserGemini";
 import type { AIFeedback } from "@/types/feedback";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS, type GeminiModel } from "@/lib/gemini/models";
 import { formatAudioLimit, MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS } from "@/lib/audioLimits";
@@ -45,6 +44,11 @@ type TranscribeResponse = {
 type FeedbackResponse = {
   recordingId: string;
   feedback: AIFeedback;
+};
+
+type GeminiKeyStatusResponse = {
+  hasKey: boolean;
+  updatedAt: string | null;
 };
 
 async function parseApiResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
@@ -101,9 +105,10 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [topic, setTopic] = useState("all");
   const [focus, setFocus] = useState("all");
   const [saveAudio, setSaveAudio] = useState(false);
-  const [browserGeminiKeyInput, setBrowserGeminiKeyInput] = useState("");
-  const [hasBrowserGeminiKey, setHasBrowserGeminiKey] = useState(false);
-  const [useBrowserGemini, setUseBrowserGemini] = useState(false);
+  const [geminiKeyInput, setGeminiKeyInput] = useState("");
+  const [hasUserGeminiKey, setHasUserGeminiKey] = useState(false);
+  const [geminiKeyStatus, setGeminiKeyStatus] = useState<string | null>(null);
+  const [isSavingGeminiKey, setIsSavingGeminiKey] = useState(false);
   const [geminiModel, setGeminiModel] = useState<GeminiModel>(DEFAULT_GEMINI_MODEL);
   const [showConfig, setShowConfig] = useState(false);
 
@@ -131,13 +136,9 @@ export function PracticeClient({ items }: PracticeClientProps) {
   }
 
   useEffect(() => {
-    const savedKey = window.localStorage.getItem("learningEnglishGeminiKey");
     const savedModel = window.localStorage.getItem("learningEnglishGeminiModel") as GeminiModel;
     const savedTopic = window.localStorage.getItem("learningEnglishPracticeTopic");
     const savedFocus = window.localStorage.getItem("learningEnglishPracticeFocus");
-
-    setHasBrowserGeminiKey(Boolean(savedKey));
-    setUseBrowserGemini(Boolean(savedKey));
 
     if (savedModel && GEMINI_MODELS.some((m) => m.value === savedModel)) {
       setGeminiModel(savedModel);
@@ -152,7 +153,24 @@ export function PracticeClient({ items }: PracticeClientProps) {
     if (savedFocus && focuses.some((f) => f.value === savedFocus)) {
       setFocus(savedFocus);
     }
+  }, []);
 
+  useEffect(() => {
+    async function loadGeminiKeyStatus() {
+      try {
+        const response = await fetch("/api/gemini-key");
+        const status = await parseApiResponse<GeminiKeyStatusResponse>(
+          response,
+          "Could not load Gemini key status.",
+        );
+        setHasUserGeminiKey(status.hasKey);
+        setGeminiKeyStatus(status.hasKey ? "Personal Gemini key is saved securely on the server." : null);
+      } catch (caught) {
+        setGeminiKeyStatus(caught instanceof Error ? caught.message : "Could not load Gemini key status.");
+      }
+    }
+
+    void loadGeminiKeyStatus();
   }, []);
 
   useEffect(() => {
@@ -163,26 +181,57 @@ export function PracticeClient({ items }: PracticeClientProps) {
     };
   }, [recordingUrl]);
 
-  function saveBrowserGeminiKey() {
-    const nextKey = browserGeminiKeyInput.trim();
+  async function saveUserGeminiKey() {
+    const nextKey = geminiKeyInput.trim();
 
-    if (nextKey) {
-      window.localStorage.setItem("learningEnglishGeminiKey", nextKey);
-      setHasBrowserGeminiKey(true);
-      setUseBrowserGemini(true);
-      setBrowserGeminiKeyInput("");
-    } else {
-      window.localStorage.removeItem("learningEnglishGeminiKey");
-      setHasBrowserGeminiKey(false);
-      setUseBrowserGemini(false);
+    if (!nextKey) {
+      setGeminiKeyStatus("Paste a Gemini API key before saving.");
+      return;
+    }
+
+    setIsSavingGeminiKey(true);
+    setGeminiKeyStatus("Validating and encrypting your key...");
+
+    try {
+      const response = await fetch("/api/gemini-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: nextKey, model: geminiModel }),
+      });
+      const status = await parseApiResponse<GeminiKeyStatusResponse>(
+        response,
+        "Could not save Gemini API key.",
+      );
+
+      setHasUserGeminiKey(status.hasKey);
+      setGeminiKeyInput("");
+      setGeminiKeyStatus("Personal Gemini key is saved securely on the server.");
+    } catch (caught) {
+      setGeminiKeyStatus(caught instanceof Error ? caught.message : "Could not save Gemini API key.");
+    } finally {
+      setIsSavingGeminiKey(false);
     }
   }
 
-  function removeBrowserGeminiKey() {
-    window.localStorage.removeItem("learningEnglishGeminiKey");
-    setBrowserGeminiKeyInput("");
-    setHasBrowserGeminiKey(false);
-    setUseBrowserGemini(false);
+  async function removeUserGeminiKey() {
+    setIsSavingGeminiKey(true);
+    setGeminiKeyStatus("Removing your saved key...");
+
+    try {
+      const response = await fetch("/api/gemini-key", { method: "DELETE" });
+      const status = await parseApiResponse<GeminiKeyStatusResponse>(
+        response,
+        "Could not remove Gemini API key.",
+      );
+
+      setHasUserGeminiKey(status.hasKey);
+      setGeminiKeyInput("");
+      setGeminiKeyStatus("Personal Gemini key removed. The app key will be used instead.");
+    } catch (caught) {
+      setGeminiKeyStatus(caught instanceof Error ? caught.message : "Could not remove Gemini API key.");
+    } finally {
+      setIsSavingGeminiKey(false);
+    }
   }
 
   function saveConfig() {
@@ -252,12 +301,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
       }
 
       setStep("transcribing");
-      const browserGeminiKey =
-        useBrowserGemini ? window.localStorage.getItem("learningEnglishGeminiKey")?.trim() ?? "" : "";
-      const shouldUseBrowserGemini = Boolean(browserGeminiKey);
-      const transcriptText = shouldUseBrowserGemini
-        ? await transcribeWithBrowserGemini(blob, browserGeminiKey, geminiModel)
-        : await (async () => {
+      const transcriptText = await (async () => {
             const formData = new FormData();
             formData.append("audio", blob, "recording.webm");
             formData.append("model", geminiModel);
@@ -280,14 +324,6 @@ export function PracticeClient({ items }: PracticeClientProps) {
       setTranscript(transcriptText);
 
       setStep("generating");
-      const browserFeedback = shouldUseBrowserGemini
-        ? await generateFeedbackWithBrowserGemini({
-            apiKey: browserGeminiKey,
-            targetText: item.content,
-            transcript: transcriptText,
-            model: geminiModel,
-          })
-        : null;
       const feedbackResponse = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -296,7 +332,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
           targetText: item.content,
           transcript: transcriptText,
           audioUrl,
-          feedback: browserFeedback,
+          feedback: null,
           model: geminiModel,
         }),
       });
@@ -397,24 +433,27 @@ export function PracticeClient({ items }: PracticeClientProps) {
 
               <div className="rounded-2xl bg-field p-6 ring-1 ring-black/5">
                 <div className="mb-4 flex items-center justify-between">
-                  <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
-                    Browser Gemini Key
-                  </label>
-                  <input
-                    type="checkbox"
-                    checked={useBrowserGemini}
-                    onChange={(event) => setUseBrowserGemini(event.target.checked)}
-                    disabled={!hasBrowserGeminiKey || isBusy}
-                    className="h-5 w-5 rounded-md border-none bg-white text-moss ring-1 ring-black/10 focus:ring-2 focus:ring-moss"
-                  />
+                  <div>
+                    <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                      Personal Gemini Key
+                    </label>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Saved encrypted on the server. The browser never receives it again.
+                    </p>
+                  </div>
+                  {hasUserGeminiKey && (
+                    <Badge variant="secondary" className="bg-moss/10 text-moss ring-1 ring-moss/20">
+                      Saved
+                    </Badge>
+                  )}
                 </div>
                 
                 <div className="flex flex-col gap-3">
                   <input
                     type="password"
-                    value={browserGeminiKeyInput}
-                    onChange={(event) => setBrowserGeminiKeyInput(event.target.value)}
-                    placeholder="Enter your Gemini API key"
+                    value={geminiKeyInput}
+                    onChange={(event) => setGeminiKeyInput(event.target.value)}
+                    placeholder={hasUserGeminiKey ? "Paste a new key to replace the saved key" : "Enter your Gemini API key"}
                     className="h-11 rounded-xl border-none bg-white px-4 text-sm shadow-sm ring-1 ring-black/5 transition-all focus:ring-2 focus:ring-moss"
                   />
                   <div className="flex gap-2">
@@ -422,26 +461,26 @@ export function PracticeClient({ items }: PracticeClientProps) {
                       type="button" 
                       variant="secondary" 
                       className="flex-1 rounded-xl bg-white text-moss hover:bg-white/80" 
-                      onClick={saveBrowserGeminiKey}
-                      disabled={isBusy}
+                      onClick={saveUserGeminiKey}
+                      disabled={isBusy || isSavingGeminiKey}
                     >
-                      Save Key
+                      {isSavingGeminiKey ? "Saving..." : "Save Key"}
                     </Button>
-                    {hasBrowserGeminiKey && (
+                    {hasUserGeminiKey && (
                       <Button 
                         type="button" 
                         variant="ghost" 
                         className="rounded-xl text-destructive hover:bg-destructive/5 hover:text-destructive" 
-                        onClick={removeBrowserGeminiKey}
-                        disabled={isBusy}
+                        onClick={removeUserGeminiKey}
+                        disabled={isBusy || isSavingGeminiKey}
                       >
                         Remove
                       </Button>
                     )}
                   </div>
                 </div>
-                {hasBrowserGeminiKey && (
-                  <p className="mt-3 text-xs text-moss/70">A Gemini key is currently saved in this browser.</p>
+                {geminiKeyStatus && (
+                  <p className="mt-3 text-xs text-moss/70">{geminiKeyStatus}</p>
                 )}
               </div>
 
@@ -481,9 +520,9 @@ export function PracticeClient({ items }: PracticeClientProps) {
               <Badge variant="secondary" className="min-w-0 max-w-[15rem] justify-center truncate rounded-full bg-moss/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-moss ring-1 ring-moss/20 sm:px-4 sm:py-1.5">
                 {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
               </Badge>
-              {useBrowserGemini && (
+              {hasUserGeminiKey && (
                 <Badge variant="secondary" className="hidden min-w-0 justify-center truncate rounded-full bg-copper/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20 sm:inline-flex">
-                  Browser Key
+                  Personal Key
                 </Badge>
               )}
             </div>

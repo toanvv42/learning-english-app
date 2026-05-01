@@ -4,6 +4,7 @@ import { feedbackSchema, generateFeedback } from "@/lib/gemini/feedback";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { type GeminiModel } from "@/lib/gemini/models";
 import { enforceUserRateLimit } from "@/lib/rateLimit";
+import { getUserGeminiApiKey } from "@/lib/gemini/userKey";
 
 const requestSchema = z.object({
   itemId: z.string().uuid().nullable(),
@@ -36,12 +37,14 @@ export async function POST(request: Request) {
     }
 
     const body = requestSchema.parse(await request.json());
+    const userGeminiApiKey = body.feedback ? null : await getUserGeminiApiKey(supabase, user.id);
     const feedback =
       body.feedback ??
       (await generateFeedback({
         targetText: body.targetText,
         transcript: body.transcript,
         model: body.model as GeminiModel,
+        apiKey: userGeminiApiKey,
       }));
 
     const { data, error } = await supabase

@@ -58,6 +58,7 @@ export default function Error({
             <li>NEXT_PUBLIC_SUPABASE_URL</li>
             <li>NEXT_PUBLIC_SUPABASE_ANON_KEY</li>
             <li>GEMINI_API_KEY</li>
+            <li>USER_KEY_ENCRYPTION_SECRET</li>
           </ul>
         </div>
       )}

@@ -26,6 +26,7 @@ Create `.env.local` from `.env.local.example`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
+USER_KEY_ENCRYPTION_SECRET=
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -37,7 +38,7 @@ CLOUDFLARE_ACCOUNT_ID=
 
 The R2 values are optional for local practice. They are only needed when the user turns on **Save audio to R2**.
 
-On Cloudflare Workers, Gemini can reject server-side calls from some Worker egress locations. The practice screen supports an optional browser Gemini key stored in local browser storage so a user can call Gemini from their own browser instead.
+`USER_KEY_ENCRYPTION_SECRET` is used to encrypt user-provided Gemini API keys before storing them in Supabase. Use a long random value and keep it stable; changing it makes existing saved user keys undecryptable.
 
 Run locally:
 
@@ -52,7 +53,8 @@ npm run dev
 3. Paste `seed/schema.sql` into the SQL editor and run it.
 4. Paste `seed/items.sql` into the SQL editor and run it.
 5. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
-6. Copy the project URL and anon key into `.env.local`.
+6. If you only need to add encrypted user Gemini keys to an existing database, run `seed/user-gemini-keys.sql`.
+7. Copy the project URL and anon key into `.env.local`.
 
 The schema enables RLS. `items` are readable by authenticated users, and every `recordings` policy is restricted with `auth.uid() = user_id`.
 
@@ -101,9 +103,13 @@ Required GitHub repository secrets:
 ```text
 CLOUDFLARE_API_TOKEN
 CLOUDFLARE_ACCOUNT_ID
+SUPABASE_ACCESS_TOKEN
+SUPABASE_PROJECT_ID
+SUPABASE_DB_PASSWORD
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 GEMINI_API_KEY
+USER_KEY_ENCRYPTION_SECRET
 ```
 
 Optional GitHub repository secrets for **Save audio to R2**:
@@ -116,7 +122,9 @@ R2_BUCKET_NAME
 R2_PUBLIC_URL
 ```
 
-The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, OpenNext, uploads runtime secrets to the Cloudflare Worker, and deploys the already-built OpenNext output.
+The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, Supabase migrations, OpenNext, uploads runtime secrets to the Cloudflare Worker, and deploys the already-built OpenNext output.
+
+Database changes should be added as timestamped files under `supabase/migrations`. CI applies them with `supabase db push` before deploying code that depends on the new schema.
 
 Manual build and deploy:
 
