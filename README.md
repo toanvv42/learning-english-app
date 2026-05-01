@@ -85,6 +85,7 @@ npm run typecheck
 npm run lint
 npm run build
 npm run pages:build
+npm run pages:deploy
 npm run secrets:scan
 ```
 
@@ -116,12 +117,21 @@ R2_BUCKET_NAME
 R2_PUBLIC_URL
 ```
 
-The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, OpenNext, uploads runtime secrets to the Cloudflare project, and deploys with `opennextjs-cloudflare deploy`.
+The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, OpenNext, uploads runtime secrets to the Cloudflare project, and deploys the already-built OpenNext output.
+
+For Cloudflare Pages Git integration, use:
+
+```text
+Build command: npm run pages:deploy
+Build output directory: .open-next/assets
+Root directory: /
+```
+
+Do not set the Cloudflare deploy command to `opennextjs-cloudflare deploy` unless `opennextjs-cloudflare build` has already run in the same job.
 
 Manual build and deploy:
 
 ```bash
-npm run pages:build
 npm run pages:deploy
 ```
 
