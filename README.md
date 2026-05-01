@@ -10,7 +10,7 @@ Pronunciation feedback app for a Vietnamese English learner practicing topic-bas
 - Supabase Auth and Postgres
 - Gemini `gemini-2.5-flash` for transcription and feedback
 - Optional Cloudflare R2 audio storage
-- Cloudflare Pages with OpenNext for Cloudflare
+- Cloudflare Workers with OpenNext for Cloudflare
 
 ## Setup
 
@@ -31,6 +31,8 @@ R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=
 R2_PUBLIC_URL=
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
 ```
 
 The R2 values are optional for local practice. They are only needed when the user turns on **Save audio to R2**.
@@ -89,13 +91,7 @@ npm run pages:deploy
 npm run secrets:scan
 ```
 
-## Deploy To Cloudflare Pages
-
-Create the Pages project once:
-
-```bash
-npx wrangler pages project create learning-english-app --production-branch main
-```
+## Deploy To Cloudflare
 
 Required GitHub repository secrets:
 
@@ -117,17 +113,7 @@ R2_BUCKET_NAME
 R2_PUBLIC_URL
 ```
 
-The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, OpenNext, uploads runtime secrets to the Cloudflare project, and deploys the already-built OpenNext output.
-
-For Cloudflare Pages Git integration, use:
-
-```text
-Build command: npm run pages:deploy
-Build output directory: .open-next/assets
-Root directory: /
-```
-
-Do not set the Cloudflare deploy command to `opennextjs-cloudflare deploy` unless `opennextjs-cloudflare build` has already run in the same job.
+The deploy workflow at `.github/workflows/deploy-cloudflare-pages.yml` runs typecheck, lint, OpenNext, uploads runtime secrets to the Cloudflare Worker, and deploys the already-built OpenNext output.
 
 Manual build and deploy:
 
@@ -136,7 +122,7 @@ CLOUDFLARE_API_TOKEN=your-token CLOUDFLARE_ACCOUNT_ID=your-account-id \
 npm run pages:deploy
 ```
 
-Use a narrowly scoped Cloudflare API token with Cloudflare Pages edit access for this account.
+Use a narrowly scoped Cloudflare API token with Workers edit access for this account.
 
 ## GitHub And Secrets
 
