@@ -72,8 +72,8 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [topic, setTopic] = useState("all");
   const [focus, setFocus] = useState("all");
   const [saveAudio, setSaveAudio] = useState(false);
-  const [browserGeminiKey, setBrowserGeminiKey] = useState("");
   const [browserGeminiKeyInput, setBrowserGeminiKeyInput] = useState("");
+  const [hasBrowserGeminiKey, setHasBrowserGeminiKey] = useState(false);
   const [useBrowserGemini, setUseBrowserGemini] = useState(false);
 
   const topics = [
@@ -122,9 +122,8 @@ export function PracticeClient({ items }: PracticeClientProps) {
   }
 
   useEffect(() => {
-    const savedKey = window.localStorage.getItem("learningEnglishGeminiKey") ?? "";
-    setBrowserGeminiKey(savedKey);
-    setBrowserGeminiKeyInput(savedKey);
+    const savedKey = window.localStorage.getItem("learningEnglishGeminiKey");
+    setHasBrowserGeminiKey(Boolean(savedKey));
     setUseBrowserGemini(Boolean(savedKey));
   }, []);
 
@@ -138,14 +137,24 @@ export function PracticeClient({ items }: PracticeClientProps) {
 
   function saveBrowserGeminiKey() {
     const nextKey = browserGeminiKeyInput.trim();
-    setBrowserGeminiKey(nextKey);
-    setUseBrowserGemini(Boolean(nextKey));
 
     if (nextKey) {
       window.localStorage.setItem("learningEnglishGeminiKey", nextKey);
+      setHasBrowserGeminiKey(true);
+      setUseBrowserGemini(true);
+      setBrowserGeminiKeyInput("");
     } else {
       window.localStorage.removeItem("learningEnglishGeminiKey");
+      setHasBrowserGeminiKey(false);
+      setUseBrowserGemini(false);
     }
+  }
+
+  function removeBrowserGeminiKey() {
+    window.localStorage.removeItem("learningEnglishGeminiKey");
+    setBrowserGeminiKeyInput("");
+    setHasBrowserGeminiKey(false);
+    setUseBrowserGemini(false);
   }
 
   async function handleRecordingComplete(blob: Blob) {
@@ -198,7 +207,9 @@ export function PracticeClient({ items }: PracticeClientProps) {
       }
 
       setStep("transcribing");
-      const shouldUseBrowserGemini = useBrowserGemini && browserGeminiKey;
+      const browserGeminiKey =
+        useBrowserGemini ? window.localStorage.getItem("learningEnglishGeminiKey")?.trim() ?? "" : "";
+      const shouldUseBrowserGemini = Boolean(browserGeminiKey);
       const transcriptText = shouldUseBrowserGemini
         ? await transcribeWithBrowserGemini(blob, browserGeminiKey)
         : await (async () => {
@@ -332,10 +343,13 @@ export function PracticeClient({ items }: PracticeClientProps) {
                 type="checkbox"
                 checked={useBrowserGemini}
                 onChange={(event) => setUseBrowserGemini(event.target.checked)}
-                disabled={!browserGeminiKey}
+                disabled={!hasBrowserGeminiKey}
                 className="h-4 w-4 accent-moss"
               />
             </label>
+            {hasBrowserGeminiKey ? (
+              <p className="text-sm text-muted-foreground">A Gemini key is saved in this browser.</p>
+            ) : null}
             <div className="flex gap-2">
               <input
                 type="password"
@@ -347,6 +361,11 @@ export function PracticeClient({ items }: PracticeClientProps) {
               <Button type="button" variant="outline" onClick={saveBrowserGeminiKey}>
                 Save key
               </Button>
+              {hasBrowserGeminiKey ? (
+                <Button type="button" variant="outline" onClick={removeBrowserGeminiKey}>
+                  Remove
+                </Button>
+              ) : null}
             </div>
           </div>
           {filteredItems.length === 0 ? (
