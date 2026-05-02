@@ -26,7 +26,6 @@ Create `.env.local` from `.env.local.example`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
-USER_KEY_ENCRYPTION_SECRET=
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -38,7 +37,9 @@ CLOUDFLARE_ACCOUNT_ID=
 
 The R2 values are optional for local practice. They are only needed when the user turns on **Save audio to R2**.
 
-`USER_KEY_ENCRYPTION_SECRET` is used to encrypt user-provided Gemini API keys before storing them in Supabase. Use a long random value and keep it stable; changing it makes existing saved user keys undecryptable.
+Personal Gemini keys are never sent to the backend. The browser uses them for direct Gemini requests. Users can choose **Remember this device** to store the key in local browser storage for convenience.
+
+If users bring their own Gemini key, restrict it in Google AI Studio to your exact app origins, for example `https://app.tinywins.us/*` and `http://localhost:3000/*` for local testing.
 
 Run locally:
 
@@ -53,8 +54,7 @@ npm run dev
 3. Paste `seed/schema.sql` into the SQL editor and run it.
 4. Paste `seed/items.sql` into the SQL editor and run it.
 5. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
-6. If you only need to add encrypted user Gemini keys to an existing database, run `seed/user-gemini-keys.sql`.
-7. Copy the project URL and anon key into `.env.local`.
+6. Copy the project URL and anon key into `.env.local`.
 
 The schema enables RLS. `items` are readable by authenticated users, and every `recordings` policy is restricted with `auth.uid() = user_id`.
 
@@ -109,7 +109,6 @@ SUPABASE_DB_PASSWORD
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 GEMINI_API_KEY
-USER_KEY_ENCRYPTION_SECRET
 ```
 
 Optional GitHub repository secrets for **Save audio to R2**:
