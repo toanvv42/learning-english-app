@@ -79,7 +79,7 @@ async def assess(audio: UploadFile = File(...), target_sentence: str = Form(...)
         if duration < 0.5 or duration > 60:
             raise HTTPException(status_code=422, detail={'code': 'invalid_duration', 'message': 'audio must be between 0.5s and 60s'})
 
-        result = await assess_pronunciation(target_sentence, duration, started)
+        result = await assess_pronunciation(target_sentence, wav, duration, started)
 
     if result['processing_time_ms'] > 5000:
         logger.warning('slow_assessment', extra={'request_id': None, 'processing_time_ms': result['processing_time_ms']})
