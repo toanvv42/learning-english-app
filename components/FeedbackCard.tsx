@@ -12,6 +12,39 @@ function formatPhonemes(phonemes: string[]) {
   return phonemes.length > 0 ? phonemes.join(" ") : "missing";
 }
 
+function getErrorPositions(word: PronunciationAssessment["words"][number]) {
+  return new Set(word.errors.map((error) => error.position));
+}
+
+function renderHeardPhonemes(word: PronunciationAssessment["words"][number]) {
+  if (word.actual_phonemes.length === 0) {
+    return <span className="font-mono text-red-600">/missing/</span>;
+  }
+
+  const errorPositions = getErrorPositions(word);
+
+  return (
+    <p className="flex flex-wrap gap-1.5 font-mono text-sm">
+      <span className="text-foreground/70">/</span>
+      {word.actual_phonemes.map((phoneme, index) => {
+        const isWrong = errorPositions.has(index);
+
+        return (
+          <span
+            key={`${word.word}-heard-${index}-${phoneme}`}
+            className={`rounded px-1.5 py-0.5 font-semibold ${
+              isWrong ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
+            }`}
+          >
+            {phoneme}
+          </span>
+        );
+      })}
+      <span className="text-foreground/70">/</span>
+    </p>
+  );
+}
+
 export function FeedbackCard({ feedback, pronunciationAssessment }: FeedbackCardProps) {
   const isHighReady = feedback.overall_score >= 8;
   const isMidReady = feedback.overall_score >= 5 && feedback.overall_score < 8;
@@ -145,9 +178,7 @@ export function FeedbackCard({ feedback, pronunciationAssessment }: FeedbackCard
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                             Heard
                           </span>
-                          <p className="font-mono text-foreground">
-                            /{formatPhonemes(word.actual_phonemes)}/
-                          </p>
+                          {renderHeardPhonemes(word)}
                         </div>
                       </div>
                       {word.errors[0] && (
