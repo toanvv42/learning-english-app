@@ -56,7 +56,8 @@ export function Recorder({ disabled = false, onRecordingComplete }: RecorderProp
 
       recorder.onstop = () => {
         clearRecordingTimers();
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const inferredType = recorder.mimeType || (chunksRef.current[0] instanceof Blob ? chunksRef.current[0].type : "") || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: inferredType });
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
         mediaRecorderRef.current = null;
