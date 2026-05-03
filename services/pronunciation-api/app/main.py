@@ -1,10 +1,12 @@
 import logging
+import os
+import secrets
 import tempfile
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
 from app.models.loader import load_models
@@ -28,6 +30,19 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title='Pronunciation API', lifespan=lifespan)
 
 
+def require_api_key(authorization: str | None = Header(default=None)) -> None:
+    configured_key = os.getenv('PRONUNCIATION_API_KEY')
+    if not configured_key:
+        return
+
+    scheme, _, token = (authorization or '').partition(' ')
+    if scheme.lower() != 'bearer' or not secrets.compare_digest(token, configured_key):
+        raise HTTPException(
+            status_code=401,
+            detail={'code': 'unauthorized', 'message': 'invalid API key'},
+        )
+
+
 @app.get('/health', response_model=HealthResponse)
 async def health():
     return {
@@ -37,7 +52,7 @@ async def health():
     }
 
 
-@app.post('/phonemes', response_model=PhonemesResponse)
+@app.post('/phonemes', response_model=PhonemesResponse, dependencies=[Depends(require_api_key)])
 async def phonemes(payload: PhonemesRequest):
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail={'code': 'invalid_request', 'message': 'text must not be empty'})
@@ -45,7 +60,7 @@ async def phonemes(payload: PhonemesRequest):
     return {'ipa': ipa, 'words': words}
 
 
-@app.post('/assess', response_model=AssessmentResponse)
+@app.post('/assess', response_model=AssessmentResponse, dependencies=[Depends(require_api_key)])
 async def assess(audio: UploadFile = File(...), target_sentence: str = Form(...), language: str = Form('en-us')):
     _ = language
     started = time.perf_counter()

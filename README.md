@@ -29,6 +29,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
 GEMINI_TIMEOUT_MS=30000
 PRONUNCIATION_API_URL=
+PRONUNCIATION_API_KEY=
 PRONUNCIATION_API_TIMEOUT_MS=15000
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
@@ -43,7 +44,7 @@ The R2 values are optional for local practice. They are only needed when the use
 
 Personal Gemini keys are never sent to the backend. The browser uses them for direct Gemini requests. Users can choose **Remember this device** to store the key in local browser storage for convenience.
 
-`PRONUNCIATION_API_URL` is optional. When set, the app calls `${PRONUNCIATION_API_URL}/assess` with the recorded audio and target sentence, stores the returned phoneme-level assessment, and gives Gemini that assessment as evidence for coaching. When unset or unavailable, practice still works with the existing Gemini transcript and feedback flow.
+`PRONUNCIATION_API_URL` is optional. When set, the app calls `${PRONUNCIATION_API_URL}/assess` with the recorded audio and target sentence, stores the returned phoneme-level assessment, and gives Gemini that assessment as evidence for coaching. If the pronunciation service has `PRONUNCIATION_API_KEY` configured, set the same value in the Next.js runtime so the server route can send the required bearer token. When unset or unavailable, practice still works with the existing Gemini transcript and feedback flow.
 
 If users bring their own Gemini key, restrict it in Google AI Studio to your exact app origins, for example `https://app.tinywins.us/*` and `http://localhost:3000/*` for local testing.
 
@@ -129,6 +130,7 @@ NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 GEMINI_API_KEY
 PRONUNCIATION_API_URL
+PRONUNCIATION_API_KEY
 PRONUNCIATION_API_TIMEOUT_MS
 ```
 

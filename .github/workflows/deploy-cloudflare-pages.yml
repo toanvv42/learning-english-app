@@ -20,6 +20,7 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_TIMEOUT_MS: ${{ secrets.GEMINI_TIMEOUT_MS }}
       PRONUNCIATION_API_URL: ${{ secrets.PRONUNCIATION_API_URL }}
+      PRONUNCIATION_API_KEY: ${{ secrets.PRONUNCIATION_API_KEY }}
       PRONUNCIATION_API_TIMEOUT_MS: ${{ secrets.PRONUNCIATION_API_TIMEOUT_MS }}
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -71,6 +72,7 @@ jobs:
             "GEMINI_API_KEY",
             "GEMINI_TIMEOUT_MS",
             "PRONUNCIATION_API_URL",
+            "PRONUNCIATION_API_KEY",
             "PRONUNCIATION_API_TIMEOUT_MS",
             "R2_ACCOUNT_ID",
             "R2_ACCESS_KEY_ID",

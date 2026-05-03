@@ -49,6 +49,11 @@ function getTimeoutMs() {
   return Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 15000;
 }
 
+function getPronunciationApiHeaders() {
+  const apiKey = process.env.PRONUNCIATION_API_KEY;
+  return apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined;
+}
+
 async function postAssessment(input: {
   audioBlob: Blob;
   fileName: string;
@@ -66,6 +71,7 @@ async function postAssessment(input: {
   try {
     const response = await fetch(getPronunciationApiUrl(), {
       method: "POST",
+      headers: getPronunciationApiHeaders(),
       body: formData,
       signal: controller.signal,
     });
