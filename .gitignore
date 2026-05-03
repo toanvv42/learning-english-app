@@ -9,3 +9,6 @@ node_modules
 dist
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+__pycache__/
+.pytest_cache/
+services/pronunciation-api/.venv/

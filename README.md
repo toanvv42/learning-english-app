@@ -9,6 +9,7 @@ Pronunciation feedback app for a Vietnamese English learner practicing topic-bas
 - Tailwind CSS
 - Supabase Auth and Postgres
 - Multiple Gemini models (`gemini-2.5-flash`, `gemini-2.5-flash-lite`) for transcription and feedback
+- Optional external pronunciation assessment API for phoneme-level evidence
 - Optional Cloudflare R2 audio storage
 - Cloudflare Workers with OpenNext for Cloudflare
 
@@ -26,6 +27,10 @@ Create `.env.local` from `.env.local.example`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
+GEMINI_TIMEOUT_MS=30000
+PRONUNCIATION_API_URL=
+PRONUNCIATION_API_KEY=
+PRONUNCIATION_API_TIMEOUT_MS=15000
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -39,6 +44,8 @@ The R2 values are optional for local practice. They are only needed when the use
 
 Personal Gemini keys are never sent to the backend. The browser uses them for direct Gemini requests. Users can choose **Remember this device** to store the key in local browser storage for convenience.
 
+`PRONUNCIATION_API_URL` is optional. When set, the app calls `${PRONUNCIATION_API_URL}/assess` with the recorded audio and target sentence, stores the returned phoneme-level assessment, and gives Gemini that assessment as evidence for coaching. If the pronunciation service has `PRONUNCIATION_API_KEY` configured, set the same value in the Next.js runtime so the server route can send the required bearer token. When unset or unavailable, practice still works with the existing Gemini transcript and feedback flow.
+
 If users bring their own Gemini key, restrict it in Google AI Studio to your exact app origins, for example `https://app.tinywins.us/*` and `http://localhost:3000/*` for local testing.
 
 Run locally:
@@ -47,14 +54,23 @@ Run locally:
 npm run dev
 ```
 
+Run the pronunciation API locally in another terminal:
+
+```bash
+make pronunciation-dev
+```
+
+Use `PRONUNCIATION_API_URL=http://127.0.0.1:8000` in `.env.local` when testing the integrated flow at `http://localhost:3000`.
+
 ## Supabase
 
 1. Create a Supabase project.
 2. Enable email auth.
 3. Paste `seed/schema.sql` into the SQL editor and run it.
 4. Paste `seed/items.sql` into the SQL editor and run it.
-5. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
-6. Copy the project URL and anon key into `.env.local`.
+5. For an existing linked Supabase project, run `make supabase-push` to apply migrations from `supabase/migrations`.
+6. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
+7. Copy the project URL and anon key into `.env.local`.
 
 The schema enables RLS. `items` are readable by authenticated users, and every `recordings` policy is restricted with `auth.uid() = user_id`.
 
@@ -94,6 +110,10 @@ npm run build
 npm run pages:build
 npm run pages:deploy
 npm run secrets:scan
+make pronunciation-dev
+make pronunciation-test
+make pronunciation-health
+make supabase-push
 ```
 
 ## Deploy To Cloudflare
@@ -109,6 +129,9 @@ SUPABASE_DB_PASSWORD
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 GEMINI_API_KEY
+PRONUNCIATION_API_URL
+PRONUNCIATION_API_KEY
+PRONUNCIATION_API_TIMEOUT_MS
 ```
 
 Optional GitHub repository secrets for **Save audio to R2**:
@@ -151,7 +174,24 @@ git config core.hooksPath .githooks
 
 - Audio is recorded as `audio/webm`.
 - By default, `/api/transcribe` receives the browser audio directly and sends it to Gemini.
+- If `PRONUNCIATION_API_URL` is configured, `/api/pronunciation-assess` proxies authenticated requests to the external FastAPI `/assess` service described in `pronunciation-api-prompt.md`.
 - If the user enables **Save audio to R2**, the browser uploads audio through `/api/upload-url`, then `/api/transcribe` reads the private R2 object server-side.
-- `/api/feedback` sends the transcript and target sentence to Gemini, validates the JSON response, then stores the attempt in Supabase.
+- `/api/feedback` sends the transcript, target sentence, and optional pronunciation assessment to Gemini, validates the JSON response, then stores the attempt in Supabase.
 - Topic and focus filters use tags in `items.tags`.
 - Real Supabase and Gemini credentials are required to test the default flow. R2 credentials are required only for optional audio storage.
+
+## Pronunciation assessment service
+
+A separate FastAPI service lives in `services/pronunciation-api` and should run independently from the Next.js runtime.
+
+### Local run
+
+```bash
+make pronunciation-dev
+```
+
+Set `PRONUNCIATION_API_URL=http://localhost:8000` for the Next.js app so `/api/pronunciation-assess` can proxy to `/assess` on the pronunciation API.
+
+### Deployment
+
+Deploy the Next.js app and pronunciation API as separate services/containers.

@@ -11,7 +11,10 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "secrets:scan": "gitleaks detect --source . --redact --no-banner --exit-code 1"
+    "secrets:scan": "gitleaks detect --source . --redact --no-banner --exit-code 1",
+    "dev:pronunciation": "make pronunciation-dev",
+    "test:pronunciation": "make pronunciation-test",
+    "docker:pronunciation": "docker compose -f services/pronunciation-api/docker-compose.yml up --build"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.699.0",

@@ -1,15 +1,23 @@
-import type { AIFeedback } from "@/types/feedback";
+import type { AIFeedback, PronunciationAssessment } from "@/types/feedback";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Info, Lightbulb, MessageCircle, Star, Target } from "lucide-react";
+import { Info, Lightbulb, MessageCircle, Star, Target, Waves } from "lucide-react";
 
 type FeedbackCardProps = {
   feedback: AIFeedback;
+  pronunciationAssessment?: PronunciationAssessment | null;
 };
 
-export function FeedbackCard({ feedback }: FeedbackCardProps) {
+function formatPhonemes(phonemes: string[]) {
+  return phonemes.length > 0 ? phonemes.join(" ") : "missing";
+}
+
+export function FeedbackCard({ feedback, pronunciationAssessment }: FeedbackCardProps) {
   const isHighReady = feedback.overall_score >= 8;
   const isMidReady = feedback.overall_score >= 5 && feedback.overall_score < 8;
+  const wordsWithEvidence = pronunciationAssessment?.words.filter(
+    (word) => word.errors.length > 0 || word.score < 95,
+  );
 
   return (
     <Card className="overflow-hidden border-none bg-white shadow-2xl ring-1 ring-black/5 animate-in slide-in-from-bottom-4 duration-500">
@@ -92,6 +100,71 @@ export function FeedbackCard({ feedback }: FeedbackCardProps) {
               {feedback.vietnamese_tip}
             </p>
           </div>
+
+          {pronunciationAssessment && (
+            <div className="rounded-2xl bg-ink/5 p-6 ring-1 ring-ink/10">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white">
+                    <Waves className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-ink">
+                    Sound Evidence
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="secondary" className="bg-white text-ink ring-1 ring-black/5">
+                    {Math.round(pronunciationAssessment.overall_score)}/100 sounds
+                  </Badge>
+                  <Badge variant="secondary" className="bg-white text-ink ring-1 ring-black/5">
+                    {Math.round(pronunciationAssessment.fluency_score)}/100 fluency
+                  </Badge>
+                </div>
+              </div>
+
+              {wordsWithEvidence && wordsWithEvidence.length > 0 ? (
+                <div className="space-y-3">
+                  {wordsWithEvidence.slice(0, 6).map((word) => (
+                    <div key={`${word.word}-${word.expected_phonemes.join("")}`} className="rounded-xl bg-white p-4 ring-1 ring-black/5">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="text-base font-black text-foreground">{word.word}</span>
+                        <Badge variant="secondary" className="bg-copper/10 text-copper ring-1 ring-copper/20">
+                          {Math.round(word.score)}/100
+                        </Badge>
+                      </div>
+                      <div className="grid gap-2 text-sm sm:grid-cols-2">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Expected
+                          </span>
+                          <p className="font-mono text-foreground">
+                            /{formatPhonemes(word.expected_phonemes)}/
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Heard
+                          </span>
+                          <p className="font-mono text-foreground">
+                            /{formatPhonemes(word.actual_phonemes)}/
+                          </p>
+                        </div>
+                      </div>
+                      {word.errors[0] && (
+                        <p className="mt-3 text-sm font-medium leading-relaxed text-foreground/70">
+                          {word.errors[0].tip}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm font-medium text-foreground/70">
+                  The phoneme check did not find a specific sound error in this attempt.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { AIFeedback } from "@/types/feedback";
+import type { AIFeedback, PronunciationAssessment } from "@/types/feedback";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS, type GeminiModel } from "@/lib/gemini/models";
 import { formatAudioLimit, MAX_AUDIO_BYTES, MAX_RECORDING_SECONDS } from "@/lib/audioLimits";
 import { generateFeedbackWithBrowserGemini, transcribeWithBrowserGemini } from "./browserGemini";
@@ -28,6 +28,7 @@ type Step =
   | "idle"
   | "saving"
   | "transcribing"
+  | "assessing"
   | "generating"
   | "complete"
   | "error";
@@ -45,6 +46,10 @@ type TranscribeResponse = {
 type FeedbackResponse = {
   recordingId: string;
   feedback: AIFeedback;
+};
+
+type PronunciationAssessmentResponse = {
+  assessment: PronunciationAssessment;
 };
 
 async function parseApiResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
@@ -99,6 +104,8 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<AIFeedback | null>(null);
+  const [pronunciationAssessment, setPronunciationAssessment] =
+    useState<PronunciationAssessment | null>(null);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [topic, setTopic] = useState("all");
   const [focus, setFocus] = useState("all");
@@ -118,13 +125,15 @@ export function PracticeClient({ items }: PracticeClientProps) {
   });
   const activeItems = filteredItems.length > 0 ? filteredItems : items;
   const item = activeItems[itemIndex] ?? activeItems[0];
-  const isBusy = step === "saving" || step === "transcribing" || step === "generating";
+  const isBusy =
+    step === "saving" || step === "transcribing" || step === "assessing" || step === "generating";
 
   function clearAttemptState() {
     setStep("idle");
     setError(null);
     setTranscript(null);
     setFeedback(null);
+    setPronunciationAssessment(null);
     setRecordingUrl((currentUrl) => {
       if (currentUrl) {
         URL.revokeObjectURL(currentUrl);
@@ -237,6 +246,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
     setError(null);
     setTranscript(null);
     setFeedback(null);
+    setPronunciationAssessment(null);
     setRecordingUrl((currentUrl) => {
       if (currentUrl) {
         URL.revokeObjectURL(currentUrl);
@@ -282,6 +292,38 @@ export function PracticeClient({ items }: PracticeClientProps) {
       }
 
       setStep("transcribing");
+      const assessmentPromise = (async () => {
+        try {
+          const assessmentResponse = objectKey
+            ? await fetch("/api/pronunciation-assess", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  objectKey,
+                  targetSentence: item.content,
+                  language: "en-us",
+                }),
+              })
+            : await fetch("/api/pronunciation-assess", {
+                method: "POST",
+                body: (() => {
+                  const formData = new FormData();
+                  formData.append("audio", blob, "recording.webm");
+                  formData.append("targetSentence", item.content);
+                  formData.append("language", "en-us");
+                  return formData;
+                })(),
+              });
+          const assessed = await parseApiResponse<PronunciationAssessmentResponse>(
+            assessmentResponse,
+            "Could not assess pronunciation.",
+          );
+          return assessed.assessment;
+        } catch (assessmentError) {
+          console.warn("Pronunciation assessment skipped.", assessmentError);
+          return null;
+        }
+      })();
       const personalGeminiApiKey = getActivePersonalGeminiKey();
       const transcriptText = await (async () => {
         if (personalGeminiApiKey) {
@@ -309,6 +351,10 @@ export function PracticeClient({ items }: PracticeClientProps) {
       })();
       setTranscript(transcriptText);
 
+      setStep("assessing");
+      const assessedPronunciation = await assessmentPromise;
+      setPronunciationAssessment(assessedPronunciation);
+
       setStep("generating");
       const personalFeedback = personalGeminiApiKey
         ? await generateFeedbackWithBrowserGemini({
@@ -316,6 +362,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
             targetText: item.content,
             transcript: transcriptText,
             model: geminiModel,
+            pronunciationAssessment: assessedPronunciation,
           })
         : null;
       const feedbackResponse = await fetch("/api/feedback", {
@@ -327,6 +374,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
           transcript: transcriptText,
           audioUrl,
           feedback: personalFeedback,
+          pronunciationAssessment: assessedPronunciation,
           model: geminiModel,
         }),
       });
@@ -606,6 +654,8 @@ export function PracticeClient({ items }: PracticeClientProps) {
                   ? "Saving audio..."
                   : step === "transcribing"
                     ? "Transcribing..."
+                    : step === "assessing"
+                      ? "Checking sounds..."
                     : "Analyzing pronunciation..."}
               </p>
             </div>
@@ -633,7 +683,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
 
             {feedback && (
               <div className="animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <FeedbackCard feedback={feedback} />
+                <FeedbackCard feedback={feedback} pronunciationAssessment={pronunciationAssessment} />
               </div>
             )}
 
