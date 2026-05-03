@@ -161,3 +161,19 @@ git config core.hooksPath .githooks
 - `/api/feedback` sends the transcript, target sentence, and optional pronunciation assessment to Gemini, validates the JSON response, then stores the attempt in Supabase.
 - Topic and focus filters use tags in `items.tags`.
 - Real Supabase and Gemini credentials are required to test the default flow. R2 credentials are required only for optional audio storage.
+
+## Pronunciation assessment service
+
+A separate FastAPI service lives in `services/pronunciation-api` and should run independently from the Next.js runtime.
+
+### Local run
+
+```bash
+npm run dev:pronunciation
+```
+
+Set `PRONUNCIATION_API_URL=http://localhost:8000` for the Next.js app so `/api/pronunciation-assess` can proxy to `/assess` on the pronunciation API.
+
+### Deployment
+
+Deploy the Next.js app and pronunciation API as separate services/containers.
