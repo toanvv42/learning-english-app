@@ -15,6 +15,7 @@ create table if not exists recordings (
   transcript text not null,
   target_text text not null,
   ai_feedback jsonb not null,
+  pronunciation_assessment jsonb,
   created_at timestamptz default now()
 );
 

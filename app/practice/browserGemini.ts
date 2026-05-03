@@ -1,4 +1,9 @@
-import { primaryIssues, type AIFeedback, type PrimaryIssue } from "@/types/feedback";
+import {
+  primaryIssues,
+  type AIFeedback,
+  type PrimaryIssue,
+  type PronunciationAssessment,
+} from "@/types/feedback";
 import { DEFAULT_GEMINI_MODEL, type GeminiModel } from "@/lib/gemini/models";
 
 type GeminiPart = {
@@ -21,7 +26,7 @@ type GeminiErrorResponse = {
 
 const feedbackPrompt = `You are an English pronunciation coach for a Vietnamese native speaker.
 
-Compare the target English sentence with the Gemini transcript. Give feedback based only on likely evidence in the transcript.
+Compare the target English sentence with the Gemini transcript and any pronunciation assessment evidence provided.
 
 First decide whether the learner attempted the target sentence. If the transcript is a completely different sentence or shares very few important words with the target, set:
 - overall_score: 1
@@ -38,6 +43,8 @@ Common Vietnamese-speaker issues to look for:
 - /ch/ substitutions as /s/
 - Vowel length issues when transcript evidence suggests them
 - Simple grammar differences such as missed past tense
+
+When pronunciation assessment evidence is provided, prefer concrete phoneme evidence over transcript guesses. For example, if a word shows expected /θ/ and actual /t/, give the learner the TH fix. Do not mention model internals or confidence.
 
 Focus on exactly one issue: the most useful fix for the learner's next attempt.
 Be encouraging but specific.
@@ -135,6 +142,36 @@ function normalizeFeedback(value: Record<string, unknown>, targetText: string, t
   };
 }
 
+function summarizeAssessment(assessment: PronunciationAssessment | null | undefined) {
+  if (!assessment) {
+    return "No pronunciation assessment evidence was available.";
+  }
+
+  const issueLines = assessment.words
+    .flatMap((word) =>
+      word.errors.map((error) => {
+        const actual = error.actual ?? "missing";
+        return `- ${word.word}: expected /${error.expected}/, heard /${actual}/. Tip: ${error.tip}`;
+      }),
+    )
+    .slice(0, 8);
+
+  const weakWords = assessment.words
+    .filter((word) => word.score < 85)
+    .slice(0, 6)
+    .map(
+      (word) =>
+        `${word.word} (${Math.round(word.score)}): expected ${word.expected_phonemes.join(" ")}; heard ${word.actual_phonemes.join(" ") || "missing"}`,
+    );
+
+  return [
+    `Pronunciation API score: ${Math.round(assessment.overall_score)}/100`,
+    `Fluency score: ${Math.round(assessment.fluency_score)}/100`,
+    issueLines.length > 0 ? `Detected phoneme errors:\n${issueLines.join("\n")}` : "Detected phoneme errors: none",
+    weakWords.length > 0 ? `Weak words:\n- ${weakWords.join("\n- ")}` : "Weak words: none",
+  ].join("\n");
+}
+
 export async function transcribeWithBrowserGemini(
   audioBlob: Blob,
   apiKey: string,
@@ -174,6 +211,7 @@ export async function generateFeedbackWithBrowserGemini(input: {
   targetText: string;
   transcript: string;
   model?: GeminiModel;
+  pronunciationAssessment?: PronunciationAssessment | null;
 }) {
   if (isWrongSentence(input.targetText, input.transcript)) {
     return {
@@ -194,6 +232,9 @@ export async function generateFeedbackWithBrowserGemini(input: {
         parts: [
           {
             text: `${feedbackPrompt}\n\nTarget sentence: ${input.targetText}\nGemini transcript: ${input.transcript}`,
+          },
+          {
+            text: `\n\nPronunciation assessment evidence:\n${summarizeAssessment(input.pronunciationAssessment)}`,
           },
         ],
       },

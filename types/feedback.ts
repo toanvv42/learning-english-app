@@ -23,3 +23,26 @@ export type AIFeedback = {
   vietnamese_tip: string;
   encouragement: string;
 };
+
+export type PronunciationAssessmentError = {
+  position: number;
+  expected: string;
+  actual: string | null;
+  tip: string;
+};
+
+export type PronunciationAssessmentWord = {
+  word: string;
+  expected_phonemes: string[];
+  actual_phonemes: string[];
+  score: number;
+  errors: PronunciationAssessmentError[];
+};
+
+export type PronunciationAssessment = {
+  overall_score: number;
+  words: PronunciationAssessmentWord[];
+  fluency_score: number;
+  duration_seconds: number;
+  processing_time_ms: number;
+};

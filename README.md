@@ -9,6 +9,7 @@ Pronunciation feedback app for a Vietnamese English learner practicing topic-bas
 - Tailwind CSS
 - Supabase Auth and Postgres
 - Multiple Gemini models (`gemini-2.5-flash`, `gemini-2.5-flash-lite`) for transcription and feedback
+- Optional external pronunciation assessment API for phoneme-level evidence
 - Optional Cloudflare R2 audio storage
 - Cloudflare Workers with OpenNext for Cloudflare
 
@@ -26,6 +27,8 @@ Create `.env.local` from `.env.local.example`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
+PRONUNCIATION_API_URL=
+PRONUNCIATION_API_TIMEOUT_MS=15000
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -38,6 +41,8 @@ CLOUDFLARE_ACCOUNT_ID=
 The R2 values are optional for local practice. They are only needed when the user turns on **Save audio to R2**.
 
 Personal Gemini keys are never sent to the backend. The browser uses them for direct Gemini requests. Users can choose **Remember this device** to store the key in local browser storage for convenience.
+
+`PRONUNCIATION_API_URL` is optional. When set, the app calls `${PRONUNCIATION_API_URL}/assess` with the recorded audio and target sentence, stores the returned phoneme-level assessment, and gives Gemini that assessment as evidence for coaching. When unset or unavailable, practice still works with the existing Gemini transcript and feedback flow.
 
 If users bring their own Gemini key, restrict it in Google AI Studio to your exact app origins, for example `https://app.tinywins.us/*` and `http://localhost:3000/*` for local testing.
 
@@ -151,7 +156,8 @@ git config core.hooksPath .githooks
 
 - Audio is recorded as `audio/webm`.
 - By default, `/api/transcribe` receives the browser audio directly and sends it to Gemini.
+- If `PRONUNCIATION_API_URL` is configured, `/api/pronunciation-assess` proxies authenticated requests to the external FastAPI `/assess` service described in `pronunciation-api-prompt.md`.
 - If the user enables **Save audio to R2**, the browser uploads audio through `/api/upload-url`, then `/api/transcribe` reads the private R2 object server-side.
-- `/api/feedback` sends the transcript and target sentence to Gemini, validates the JSON response, then stores the attempt in Supabase.
+- `/api/feedback` sends the transcript, target sentence, and optional pronunciation assessment to Gemini, validates the JSON response, then stores the attempt in Supabase.
 - Topic and focus filters use tags in `items.tags`.
 - Real Supabase and Gemini credentials are required to test the default flow. R2 credentials are required only for optional audio storage.
