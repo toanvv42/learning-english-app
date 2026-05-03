@@ -78,20 +78,36 @@ function extractText(response: GeminiResponse) {
 }
 
 async function callBrowserGemini(apiKey: string, model: GeminiModel, body: unknown) {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 30000);
+  let response: Response;
+  let payload: GeminiResponse | GeminiErrorResponse | null;
+
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        referrer: window.location.origin,
+        referrerPolicy: "origin",
+        body: JSON.stringify(body),
+        signal: controller.signal,
       },
-      referrer: window.location.origin,
-      referrerPolicy: "origin",
-      body: JSON.stringify(body),
-    },
-  );
-  const payload = (await response.json().catch(() => null)) as GeminiResponse | GeminiErrorResponse | null;
+    );
+    payload = (await response.json().catch(() => null)) as GeminiResponse | GeminiErrorResponse | null;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Gemini request timed out. Try a shorter recording or retry.");
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const message =

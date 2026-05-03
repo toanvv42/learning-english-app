@@ -38,6 +38,14 @@ const requestSchema = z.object({
   model: z.string().optional(),
 });
 
+function isMissingPronunciationAssessmentColumn(error: { message: string; code?: string }) {
+  return (
+    error.code === "PGRST204" ||
+    error.message.includes("pronunciation_assessment") ||
+    error.message.includes("schema cache")
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -69,22 +77,41 @@ export async function POST(request: Request) {
         pronunciationAssessment: body.pronunciationAssessment,
       }));
 
-    const { data, error } = await supabase
+    const recordingInsert = {
+      user_id: user.id,
+      item_id: body.itemId,
+      audio_url: body.audioUrl,
+      transcript: body.transcript,
+      target_text: body.targetText,
+      ai_feedback: feedback,
+    };
+
+    let { data, error } = await supabase
       .from("recordings")
       .insert({
-        user_id: user.id,
-        item_id: body.itemId,
-        audio_url: body.audioUrl,
-        transcript: body.transcript,
-        target_text: body.targetText,
-        ai_feedback: feedback,
+        ...recordingInsert,
         pronunciation_assessment: body.pronunciationAssessment ?? null,
       })
       .select("id")
       .single();
 
+    if (error && isMissingPronunciationAssessmentColumn(error)) {
+      const fallback = await supabase
+        .from("recordings")
+        .insert(recordingInsert)
+        .select("id")
+        .single();
+
+      data = fallback.data;
+      error = fallback.error;
+    }
+
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (!data) {
+      throw new Error("Recording was not created.");
     }
 
     return NextResponse.json({

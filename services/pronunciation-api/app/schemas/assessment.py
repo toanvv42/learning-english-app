@@ -5,7 +5,7 @@ class PhonemeError(BaseModel):
     position: int
     expected: str
     actual: str
-    tip: str | None = None
+    tip: str
 
 
 class WordAssessment(BaseModel):

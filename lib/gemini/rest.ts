@@ -37,20 +37,42 @@ function extractText(response: GeminiResponse) {
   return response.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim() ?? "";
 }
 
+function getGeminiTimeoutMs() {
+  const configuredTimeout = Number(process.env.GEMINI_TIMEOUT_MS);
+  return Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 30000;
+}
+
 export async function generateGeminiText(
   body: unknown,
   model: GeminiModel = DEFAULT_GEMINI_MODEL,
   apiKey = requireEnv("GEMINI_API_KEY"),
 ) {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
-  const payload = (await response.json().catch(() => null)) as GeminiResponse | GeminiErrorResponse | null;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), getGeminiTimeoutMs());
+
+  let response: Response;
+  let payload: GeminiResponse | GeminiErrorResponse | null;
+
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      },
+    );
+    payload = (await response.json().catch(() => null)) as GeminiResponse | GeminiErrorResponse | null;
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Gemini request timed out. Try a shorter recording or retry.");
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const message =

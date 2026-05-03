@@ -27,6 +27,7 @@ Create `.env.local` from `.env.local.example`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
+GEMINI_TIMEOUT_MS=30000
 PRONUNCIATION_API_URL=
 PRONUNCIATION_API_TIMEOUT_MS=15000
 R2_ACCOUNT_ID=
@@ -52,14 +53,23 @@ Run locally:
 npm run dev
 ```
 
+Run the pronunciation API locally in another terminal:
+
+```bash
+make pronunciation-dev
+```
+
+Use `PRONUNCIATION_API_URL=http://127.0.0.1:8000` in `.env.local` when testing the integrated flow at `http://localhost:3000`.
+
 ## Supabase
 
 1. Create a Supabase project.
 2. Enable email auth.
 3. Paste `seed/schema.sql` into the SQL editor and run it.
 4. Paste `seed/items.sql` into the SQL editor and run it.
-5. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
-6. Copy the project URL and anon key into `.env.local`.
+5. For an existing linked Supabase project, run `make supabase-push` to apply migrations from `supabase/migrations`.
+6. If you only need to add request limiting to an existing database, run `seed/rate-limit.sql`.
+7. Copy the project URL and anon key into `.env.local`.
 
 The schema enables RLS. `items` are readable by authenticated users, and every `recordings` policy is restricted with `auth.uid() = user_id`.
 
@@ -99,6 +109,10 @@ npm run build
 npm run pages:build
 npm run pages:deploy
 npm run secrets:scan
+make pronunciation-dev
+make pronunciation-test
+make pronunciation-health
+make supabase-push
 ```
 
 ## Deploy To Cloudflare
@@ -114,6 +128,8 @@ SUPABASE_DB_PASSWORD
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 GEMINI_API_KEY
+PRONUNCIATION_API_URL
+PRONUNCIATION_API_TIMEOUT_MS
 ```
 
 Optional GitHub repository secrets for **Save audio to R2**:
@@ -169,7 +185,7 @@ A separate FastAPI service lives in `services/pronunciation-api` and should run 
 ### Local run
 
 ```bash
-npm run dev:pronunciation
+make pronunciation-dev
 ```
 
 Set `PRONUNCIATION_API_URL=http://localhost:8000` for the Next.js app so `/api/pronunciation-assess` can proxy to `/assess` on the pronunciation API.

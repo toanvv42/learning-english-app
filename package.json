@@ -12,8 +12,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "secrets:scan": "gitleaks detect --source . --redact --no-banner --exit-code 1",
-    "dev:pronunciation": "cd services/pronunciation-api && uvicorn app.main:app --reload --port 8000",
-    "test:pronunciation": "cd services/pronunciation-api && pytest",
+    "dev:pronunciation": "make pronunciation-dev",
+    "test:pronunciation": "make pronunciation-test",
     "docker:pronunciation": "docker compose -f services/pronunciation-api/docker-compose.yml up --build"
   },
   "dependencies": {

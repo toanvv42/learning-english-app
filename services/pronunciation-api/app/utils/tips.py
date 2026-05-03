@@ -15,5 +15,7 @@ TIP_MAP = {
 }
 
 
-def get_tip(expected: str, actual: str) -> str | None:
-    return TIP_MAP.get((expected, actual))
+def get_tip(expected: str, actual: str) -> str:
+    if not actual:
+        return "Don't swallow the final consonant — release it clearly"
+    return TIP_MAP.get((expected, actual), 'Listen to the target sound and repeat it slowly')
