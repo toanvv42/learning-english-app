@@ -109,7 +109,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [topic, setTopic] = useState("all");
   const [focus, setFocus] = useState("all");
-  const [saveAudio, setSaveAudio] = useState(false);
+  const saveAudio = false;
   const [geminiKeyInput, setGeminiKeyInput] = useState("");
   const [sessionGeminiApiKey, setSessionGeminiApiKey] = useState("");
   const [geminiKeyStatus, setGeminiKeyStatus] = useState<string | null>(null);
@@ -551,18 +551,6 @@ export function PracticeClient({ items }: PracticeClientProps) {
                 </p>
               </div>
 
-              <label className="flex items-center justify-between rounded-2xl bg-field p-6 ring-1 ring-black/5">
-                <span className="text-sm font-bold uppercase tracking-widest text-moss/70">
-                  Save Audio recordings
-                </span>
-                <input
-                  type="checkbox"
-                  checked={saveAudio}
-                  onChange={(event) => setSaveAudio(event.target.checked)}
-                  disabled={isBusy}
-                  className="h-5 w-5 rounded-md border-none bg-white text-moss ring-1 ring-black/10 focus:ring-2 focus:ring-moss"
-                />
-              </label>
             </div>
 
             <Button 

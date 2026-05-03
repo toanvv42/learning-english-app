@@ -6,10 +6,21 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.main import state
 from app.services.assessor import assess_pronunciation
 
 
 client = TestClient(app)
+
+
+class FakePhonemeModel:
+    def infer_phonemes(self, audio_path: str):
+        _ = audio_path
+        return ['h', 'ə', 'l', 'oʊ']
+
+
+def use_fake_model():
+    state['models'] = {'phoneme_model': FakePhonemeModel()}
 
 
 def write_tone(path: Path, duration: float = 1.0, sample_rate: int = 16000) -> None:
@@ -78,10 +89,11 @@ def test_phonemes_accepts_correct_api_key(monkeypatch):
 
 
 def test_assessment_uses_audio_without_fake_t(tmp_path):
+    use_fake_model()
     wav_path = tmp_path / 'tone.wav'
     write_tone(wav_path)
 
-    result = asyncio.run(assess_pronunciation('I', wav_path, 1.0, 0.0))
+    result = asyncio.run(assess_pronunciation('hello', wav_path, 1.0, 0.0))
 
     assert result['words'][0]['actual_phonemes'] == result['words'][0]['expected_phonemes']
     assert result['words'][0]['actual_phonemes'] != ['t']
@@ -89,6 +101,7 @@ def test_assessment_uses_audio_without_fake_t(tmp_path):
 
 
 def test_assessment_marks_silent_audio_missing(tmp_path):
+    use_fake_model()
     wav_path = tmp_path / 'silence.wav'
     write_silence(wav_path)
 

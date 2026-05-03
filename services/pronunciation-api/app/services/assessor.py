@@ -1,12 +1,19 @@
 import asyncio
 import math
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from app.services.audio import read_mono_pcm16
 from app.services.phonemizer import phonemize_text
-from app.services.aligner import align_words
 from app.utils.diff import diff_phonemes
+
+
+@dataclass
+class AlignmentOp:
+    op: str
+    expected: str | None
+    actual: str | None
 
 
 def frame_rms(samples: list[int]) -> float:
@@ -62,6 +69,122 @@ def estimated_actual_phonemes(expected: list[str], coverage: float) -> list[str]
     return []
 
 
+def align_phonemes(expected: list[str], actual: list[str]) -> list[AlignmentOp]:
+    n, m = len(expected), len(actual)
+    dp = [[0] * (m + 1) for _ in range(n + 1)]
+
+    for i in range(n + 1):
+        dp[i][0] = i
+    for j in range(m + 1):
+        dp[0][j] = j
+
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            cost = 0 if expected[i - 1] == actual[j - 1] else 1
+            dp[i][j] = min(
+                dp[i - 1][j] + 1,
+                dp[i][j - 1] + 1,
+                dp[i - 1][j - 1] + cost,
+            )
+
+    ops: list[AlignmentOp] = []
+    i, j = n, m
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and expected[i - 1] == actual[j - 1]:
+            ops.append(AlignmentOp('match', expected[i - 1], actual[j - 1]))
+            i -= 1
+            j -= 1
+        elif i > 0 and j > 0 and dp[i][j] == dp[i - 1][j - 1] + 1:
+            ops.append(AlignmentOp('sub', expected[i - 1], actual[j - 1]))
+            i -= 1
+            j -= 1
+        elif i > 0 and dp[i][j] == dp[i - 1][j] + 1:
+            ops.append(AlignmentOp('del', expected[i - 1], None))
+            i -= 1
+        else:
+            ops.append(AlignmentOp('ins', None, actual[j - 1]))
+            j -= 1
+
+    ops.reverse()
+    return ops
+
+
+def phoneme_score(ops: list[AlignmentOp]) -> int:
+    expected_count = sum(1 for op in ops if op.expected)
+    errors = sum(1 for op in ops if op.op != 'match')
+
+    if expected_count == 0:
+        return 0
+
+    return max(0, min(100, int(round(100 * (1 - errors / expected_count)))))
+
+
+def actual_speech_phonemes(wav_path: Path) -> list[str]:
+    from app.main import state
+    from app.models.loader import load_models
+
+    segments = speech_segments(wav_path)
+    if not segments:
+        return []
+
+    if state.get('models') is None:
+        state['models'] = load_models()
+
+    model = (state.get('models') or {}).get('phoneme_model')
+    if model is None:
+        return []
+
+    if hasattr(model, 'infer_phonemes'):
+        return list(model.infer_phonemes(str(wav_path)))
+
+    return [
+        item['phoneme']
+        for item in model.infer(str(wav_path))
+        if isinstance(item, dict) and isinstance(item.get('phoneme'), str)
+    ]
+
+
+def build_word_results(expected_words: list[dict], actual: list[str]) -> list[dict]:
+    flattened_expected = [
+        phoneme
+        for item in expected_words
+        for phoneme in item['phonemes']
+    ]
+    ops = align_phonemes(flattened_expected, actual)
+    results = []
+    cursor = 0
+
+    for item in expected_words:
+        expected = item['phonemes']
+        word_ops = []
+
+        while cursor < len(ops) and len([op for op in word_ops if op.expected]) < len(expected):
+            word_ops.append(ops[cursor])
+            cursor += 1
+
+        word_actual = [op.actual for op in word_ops if op.actual]
+        errors = [
+            {
+                'position': index,
+                'expected': op.expected or '',
+                'actual': op.actual or '',
+                'tip': diff_phonemes([op.expected or ''], [op.actual or ''])[1][0]['tip'],
+            }
+            for index, op in enumerate(word_ops)
+            if op.op != 'match' and op.expected
+        ]
+
+        results.append({
+            'word': item['word'],
+            'expected_phonemes': expected,
+            'actual_phonemes': word_actual,
+            'score': phoneme_score(word_ops),
+            'errors': errors,
+        })
+
+    return results
+
+
 async def assess_pronunciation(
     target_sentence: str,
     wav_path: Path,
@@ -70,26 +193,12 @@ async def assess_pronunciation(
 ) -> dict:
     ipa, expected_words = await asyncio.to_thread(phonemize_text, target_sentence)
     _ = ipa
-    spans = await asyncio.to_thread(align_words, target_sentence, duration_seconds)
     segments = await asyncio.to_thread(speech_segments, wav_path)
-    word_results = []
-    total = 0
-    for idx, item in enumerate(expected_words):
-        expected = item['phonemes']
-        span = spans[idx] if idx < len(spans) else {'start': 0.0, 'end': duration_seconds}
-        span_duration = max(span['end'] - span['start'], 0.01)
-        coverage = min(1.0, overlap_seconds(span['start'], span['end'], segments) / span_duration)
-        actual = estimated_actual_phonemes(expected, coverage)
-        score, errors = diff_phonemes(expected, actual)
-        total += score
-        word_results.append({
-            'word': item['word'],
-            'expected_phonemes': expected,
-            'actual_phonemes': actual,
-            'score': score,
-            'errors': errors,
-        })
-    overall = int(total / max(len(word_results), 1))
+    actual = await asyncio.to_thread(actual_speech_phonemes, wav_path)
+    word_results = build_word_results(expected_words, actual)
+    total_expected = sum(len(item['expected_phonemes']) for item in word_results)
+    weighted_score = sum(item['score'] * len(item['expected_phonemes']) for item in word_results)
+    overall = int(round(weighted_score / max(total_expected, 1)))
     speech_time = sum(segment['end'] - segment['start'] for segment in segments)
     coverage_ratio = speech_time / max(duration_seconds, 0.01)
     long_pauses = sum(
