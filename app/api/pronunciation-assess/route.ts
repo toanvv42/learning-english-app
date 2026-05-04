@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { formatAudioLimit, MAX_AUDIO_BYTES } from "@/lib/audioLimits";
-import { assessPronunciation } from "@/lib/pronunciation/adapters";
+import {
+  assessPronunciation,
+  getDefaultPronunciationProvider,
+  parsePronunciationProvider,
+  type PronunciationProvider,
+} from "@/lib/pronunciation/adapters";
 import { getR2ObjectBlob } from "@/lib/r2/client";
 import { enforceUserRateLimit } from "@/lib/rateLimit";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUserPlan, isProPlan } from "@/lib/userPlan";
 
 const jsonRequestSchema = z.object({
   objectKey: z.string().min(1),
   targetSentence: z.string().min(1),
   language: z.string().min(1).default("en-us"),
+  provider: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -38,12 +45,14 @@ export async function POST(request: Request) {
     let fileName = "recording.webm";
     let targetSentence: string;
     let language = "en-us";
+    let provider: PronunciationProvider | undefined;
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
       const audio = formData.get("audio");
       const target = formData.get("targetSentence");
       const requestedLanguage = formData.get("language");
+      const requestedProvider = formData.get("provider");
 
       if (!(audio instanceof Blob)) {
         return NextResponse.json({ error: "Missing audio file." }, { status: 400 });
@@ -59,6 +68,9 @@ export async function POST(request: Request) {
       language = typeof requestedLanguage === "string" && requestedLanguage.trim()
         ? requestedLanguage.trim()
         : language;
+      provider = typeof requestedProvider === "string" && requestedProvider.trim()
+        ? parsePronunciationProvider(requestedProvider.trim())
+        : provider;
     } else {
       const body = jsonRequestSchema.parse(await request.json());
 
@@ -69,6 +81,7 @@ export async function POST(request: Request) {
       audioBlob = await getR2ObjectBlob(body.objectKey);
       targetSentence = body.targetSentence;
       language = body.language;
+      provider = body.provider ? parsePronunciationProvider(body.provider) : provider;
     }
 
     if (audioBlob.size > MAX_AUDIO_BYTES) {
@@ -78,11 +91,25 @@ export async function POST(request: Request) {
       );
     }
 
+    const effectiveProvider = provider ?? getDefaultPronunciationProvider();
+
+    if (effectiveProvider === "azure") {
+      const plan = await getUserPlan(supabase, user.id);
+
+      if (!isProPlan(plan)) {
+        return NextResponse.json(
+          { error: "Azure pronunciation assessment requires a Pro account." },
+          { status: 403 },
+        );
+      }
+    }
+
     const assessment = await assessPronunciation({
       audioBlob,
       fileName,
       targetSentence,
       language,
+      provider: effectiveProvider,
     });
 
     return NextResponse.json({ assessment });

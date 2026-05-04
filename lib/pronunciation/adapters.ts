@@ -29,9 +29,10 @@ type AssessmentInput = {
   fileName: string;
   targetSentence: string;
   language: string;
+  provider?: PronunciationProvider;
 };
 
-type PronunciationProvider = "self-hosted" | "azure";
+export type PronunciationProvider = "self-hosted" | "azure";
 
 const azurePhonemeSchema = z.object({
   Phoneme: z.string(),
@@ -68,18 +69,49 @@ const azureResponseSchema = z.object({
     .optional(),
 });
 
-function getProvider(): PronunciationProvider {
-  const provider = (process.env.PRONUNCIATION_PROVIDER ?? "self-hosted").toLowerCase();
+export function parsePronunciationProvider(provider: string): PronunciationProvider {
+  const normalizedProvider = provider.toLowerCase();
 
-  if (provider === "azure") {
+  if (normalizedProvider === "azure") {
     return "azure";
   }
 
-  if (provider === "self-hosted" || provider === "self_hosted" || provider === "selfhosted") {
+  if (
+    normalizedProvider === "self-hosted" ||
+    normalizedProvider === "self_hosted" ||
+    normalizedProvider === "selfhosted"
+  ) {
     return "self-hosted";
   }
 
-  throw new Error("PRONUNCIATION_PROVIDER must be either 'self-hosted' or 'azure'.");
+  throw new Error("Pronunciation provider must be either 'self-hosted' or 'azure'.");
+}
+
+export function getDefaultPronunciationProvider(): PronunciationProvider {
+  return parsePronunciationProvider(process.env.PRONUNCIATION_PROVIDER ?? "self-hosted");
+}
+
+export function isAzurePronunciationEnabled() {
+  return Boolean(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION);
+}
+
+export function getPronunciationProviderConfig(input: { isPro: boolean }) {
+  const defaultProvider = getDefaultPronunciationProvider();
+  const azureEnabled = input.isPro && isAzurePronunciationEnabled();
+
+  return {
+    defaultProvider: defaultProvider === "azure" && !azureEnabled ? "self-hosted" : defaultProvider,
+    providers: {
+      "self-hosted": {
+        enabled: Boolean(process.env.PRONUNCIATION_API_URL),
+        pro: false,
+      },
+      azure: {
+        enabled: azureEnabled,
+        pro: true,
+      },
+    },
+  };
 }
 
 function getTimeoutMs() {
@@ -313,5 +345,15 @@ async function assessWithAzure(input: AssessmentInput) {
 }
 
 export async function assessPronunciation(input: AssessmentInput) {
-  return getProvider() === "azure" ? assessWithAzure(input) : assessWithSelfHosted(input);
+  const provider = input.provider ?? getDefaultPronunciationProvider();
+
+  if (provider === "azure") {
+    if (!isAzurePronunciationEnabled()) {
+      throw new Error("Azure pronunciation assessment is a Pro provider and is not enabled.");
+    }
+
+    return assessWithAzure(input);
+  }
+
+  return assessWithSelfHosted(input);
 }

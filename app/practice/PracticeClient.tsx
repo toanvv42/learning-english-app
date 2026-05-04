@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { RotateCcw, Settings, Volume2 } from "lucide-react";
+import { Crown, RotateCcw, Settings, Volume2 } from "lucide-react";
 import { FeedbackCard } from "@/components/FeedbackCard";
 import { Recorder } from "@/components/Recorder";
 import { TargetSentence } from "@/components/TargetSentence";
@@ -52,6 +52,13 @@ type PronunciationAssessmentResponse = {
   assessment: PronunciationAssessment;
 };
 
+type PronunciationProvider = "self-hosted" | "azure";
+
+type PronunciationConfigResponse = {
+  defaultProvider: PronunciationProvider;
+  providers: Record<PronunciationProvider, { enabled: boolean; pro: boolean }>;
+};
+
 async function parseApiResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
   const body = (await response.json().catch(() => null)) as unknown;
 
@@ -97,6 +104,24 @@ const focuses = [
 ];
 
 const PERSONAL_GEMINI_KEY_STORAGE_KEY = "learningEnglishPersonalGeminiKey";
+const PRONUNCIATION_PROVIDER_STORAGE_KEY = "learningEnglishPronunciationProvider";
+
+const pronunciationProviders: Array<{
+  value: PronunciationProvider;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "self-hosted",
+    label: "Self-hosted",
+    description: "Use the local pronunciation API.",
+  },
+  {
+    value: "azure",
+    label: "Azure Speech",
+    description: "Use Azure pronunciation assessment.",
+  },
+];
 
 export function PracticeClient({ items }: PracticeClientProps) {
   const [itemIndex, setItemIndex] = useState(0);
@@ -115,6 +140,10 @@ export function PracticeClient({ items }: PracticeClientProps) {
   const [geminiKeyStatus, setGeminiKeyStatus] = useState<string | null>(null);
   const [rememberPersonalGeminiKey, setRememberPersonalGeminiKey] = useState(true);
   const [geminiModel, setGeminiModel] = useState<GeminiModel>(DEFAULT_GEMINI_MODEL);
+  const [pronunciationProvider, setPronunciationProvider] =
+    useState<PronunciationProvider>("self-hosted");
+  const [pronunciationConfig, setPronunciationConfig] =
+    useState<PronunciationConfigResponse | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const geminiKeyInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,6 +176,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
     const savedModel = window.localStorage.getItem("learningEnglishGeminiModel") as GeminiModel;
     const savedTopic = window.localStorage.getItem("learningEnglishPracticeTopic");
     const savedFocus = window.localStorage.getItem("learningEnglishPracticeFocus");
+    const savedPronunciationProvider = window.localStorage.getItem(PRONUNCIATION_PROVIDER_STORAGE_KEY);
     const savedPersonalGeminiKey = window.localStorage.getItem(PERSONAL_GEMINI_KEY_STORAGE_KEY);
 
     if (savedModel && GEMINI_MODELS.some((m) => m.value === savedModel)) {
@@ -163,12 +193,59 @@ export function PracticeClient({ items }: PracticeClientProps) {
       setFocus(savedFocus);
     }
 
+    if (
+      savedPronunciationProvider === "self-hosted" ||
+      savedPronunciationProvider === "azure"
+    ) {
+      setPronunciationProvider(savedPronunciationProvider);
+    }
+
     if (savedPersonalGeminiKey) {
       setGeminiKeyInput(savedPersonalGeminiKey);
       setSessionGeminiApiKey(savedPersonalGeminiKey);
       setRememberPersonalGeminiKey(true);
       setGeminiKeyStatus("Personal Gemini key loaded from this device.");
     }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPronunciationConfig() {
+      try {
+        const response = await fetch("/api/pronunciation-config");
+        const config = await parseApiResponse<PronunciationConfigResponse>(
+          response,
+          "Could not load pronunciation provider configuration.",
+        );
+
+        if (!isMounted) {
+          return;
+        }
+
+        setPronunciationConfig(config);
+
+        const savedProvider = window.localStorage.getItem(PRONUNCIATION_PROVIDER_STORAGE_KEY);
+        if (
+          (savedProvider !== "self-hosted" && savedProvider !== "azure") ||
+          !config.providers[savedProvider].enabled
+        ) {
+          setPronunciationProvider(
+            config.providers[config.defaultProvider].enabled ? config.defaultProvider : "self-hosted",
+          );
+        }
+      } catch {
+        if (isMounted) {
+          setPronunciationConfig(null);
+        }
+      }
+    }
+
+    void loadPronunciationConfig();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -228,6 +305,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
     window.localStorage.setItem("learningEnglishGeminiModel", geminiModel);
     window.localStorage.setItem("learningEnglishPracticeTopic", topic);
     window.localStorage.setItem("learningEnglishPracticeFocus", focus);
+    window.localStorage.setItem(PRONUNCIATION_PROVIDER_STORAGE_KEY, pronunciationProvider);
     setShowConfig(false);
     setItemIndex(0);
     clearAttemptState();
@@ -303,6 +381,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                   objectKey,
                   targetSentence: item.content,
                   language: "en-us",
+                  provider: pronunciationProvider,
                 }),
               })
             : await fetch("/api/pronunciation-assess", {
@@ -312,6 +391,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                   formData.append("audio", blob, "recording.wav");
                   formData.append("targetSentence", item.content);
                   formData.append("language", "en-us");
+                  formData.append("provider", pronunciationProvider);
                   return formData;
                 })(),
               });
@@ -474,6 +554,44 @@ export function PracticeClient({ items }: PracticeClientProps) {
                 </p>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-bold uppercase tracking-widest text-moss/70">
+                  Pronunciation Provider
+                </label>
+                <select
+                  value={pronunciationProvider}
+                  onChange={(event) => setPronunciationProvider(event.target.value as PronunciationProvider)}
+                  className="h-12 w-full rounded-xl border-none bg-field px-4 text-base shadow-sm ring-1 ring-black/5 transition-all focus:ring-2 focus:ring-moss"
+                >
+                  {pronunciationProviders.map((option) => {
+                    const config = pronunciationConfig?.providers[option.value];
+                    const isDisabled = config ? !config.enabled : option.value === "azure";
+
+                    return (
+                      <option value={option.value} key={option.value} disabled={isDisabled}>
+                        {option.label}
+                        {config?.pro ? " Pro" : ""}
+                        {isDisabled ? " unavailable" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {
+                      pronunciationProviders.find((option) => option.value === pronunciationProvider)
+                        ?.description
+                    }
+                  </span>
+                  {pronunciationConfig?.providers[pronunciationProvider]?.pro && (
+                    <Badge variant="secondary" className="gap-1 bg-copper/10 text-copper ring-1 ring-copper/20">
+                      <Crown className="h-3 w-3" />
+                      Pro
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
               <div className="rounded-2xl bg-field p-6 ring-1 ring-black/5">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
@@ -575,6 +693,10 @@ export function PracticeClient({ items }: PracticeClientProps) {
               </Badge>
               <Badge variant="secondary" className="min-w-0 max-w-[15rem] justify-center truncate rounded-full bg-moss/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-moss ring-1 ring-moss/20 sm:px-4 sm:py-1.5">
                 {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
+              </Badge>
+              <Badge variant="secondary" className="hidden min-w-0 justify-center gap-1 truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10 sm:inline-flex">
+                {pronunciationProvider === "azure" && <Crown className="h-3 w-3 text-copper" />}
+                {pronunciationProviders.find((provider) => provider.value === pronunciationProvider)?.label}
               </Badge>
               {sessionGeminiApiKey && (
                 <Badge variant="secondary" className="hidden min-w-0 justify-center truncate rounded-full bg-copper/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20 sm:inline-flex">

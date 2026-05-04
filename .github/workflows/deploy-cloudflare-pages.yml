@@ -2,6 +2,9 @@ name: Deploy Cloudflare
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*"
 
 concurrency:
   group: cloudflare-${{ github.ref }}
@@ -19,6 +22,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_TIMEOUT_MS: ${{ secrets.GEMINI_TIMEOUT_MS }}
+      PRONUNCIATION_PROVIDER: ${{ secrets.PRONUNCIATION_PROVIDER }}
       PRONUNCIATION_API_URL: ${{ secrets.PRONUNCIATION_API_URL }}
       PRONUNCIATION_API_KEY: ${{ secrets.PRONUNCIATION_API_KEY }}
       PRONUNCIATION_API_TIMEOUT_MS: ${{ secrets.PRONUNCIATION_API_TIMEOUT_MS }}
@@ -27,6 +31,8 @@ jobs:
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
       R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
+      AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+      AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
 
     steps:
       - name: Checkout
@@ -71,6 +77,7 @@ jobs:
             "NEXT_PUBLIC_SUPABASE_ANON_KEY",
             "GEMINI_API_KEY",
             "GEMINI_TIMEOUT_MS",
+            "PRONUNCIATION_PROVIDER",
             "PRONUNCIATION_API_URL",
             "PRONUNCIATION_API_KEY",
             "PRONUNCIATION_API_TIMEOUT_MS",
@@ -79,6 +86,8 @@ jobs:
             "R2_SECRET_ACCESS_KEY",
             "R2_BUCKET_NAME",
             "R2_PUBLIC_URL",
+            "AZURE_SPEECH_KEY",
+            "AZURE_SPEECH_REGION"
           ];
           const values = Object.fromEntries(keys.map((key) => [key, process.env[key] ?? ""]));
           fs.writeFileSync(".cloudflare-worker-secrets.json", JSON.stringify(values));
