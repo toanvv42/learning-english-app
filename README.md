@@ -28,9 +28,12 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 GEMINI_API_KEY=
 GEMINI_TIMEOUT_MS=30000
+PRONUNCIATION_PROVIDER=self-hosted
 PRONUNCIATION_API_URL=
 PRONUNCIATION_API_KEY=
 PRONUNCIATION_API_TIMEOUT_MS=15000
+AZURE_SPEECH_KEY=
+AZURE_SPEECH_REGION=
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -44,7 +47,11 @@ The R2 values are optional for local practice. They are only needed when the use
 
 Personal Gemini keys are never sent to the backend. The browser uses them for direct Gemini requests. Users can choose **Remember this device** to store the key in local browser storage for convenience.
 
-`PRONUNCIATION_API_URL` is optional. When set, the app calls `${PRONUNCIATION_API_URL}/assess` with the recorded audio and target sentence, stores the returned phoneme-level assessment, and gives Gemini that assessment as evidence for coaching. If the pronunciation service has `PRONUNCIATION_API_KEY` configured, set the same value in the Next.js runtime so the server route can send the required bearer token. When unset or unavailable, practice still works with the existing Gemini transcript and feedback flow.
+`PRONUNCIATION_PROVIDER` toggles the pronunciation assessment backend. Use `self-hosted` to call your FastAPI service, or `azure` to call Azure Speech pronunciation assessment directly. The browser records 16 kHz mono WAV so both backends receive a compatible format.
+
+For `self-hosted`, set `PRONUNCIATION_API_URL`. The app calls `${PRONUNCIATION_API_URL}/assess` with the recorded audio and target sentence, stores the returned phoneme-level assessment, and gives Gemini that assessment as evidence for coaching. If the pronunciation service has `PRONUNCIATION_API_KEY` configured, set the same value in the Next.js runtime so the server route can send the required bearer token.
+
+For `azure`, set `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` from your Speech service resource. The S0 tier is enough for pronunciation assessment. `PRONUNCIATION_API_TIMEOUT_MS` also controls the Azure request timeout. When the configured assessment backend is unavailable, practice still works with the existing Gemini transcript and feedback flow.
 
 If users bring their own Gemini key, restrict it in Google AI Studio to your exact app origins, for example `https://app.tinywins.us/*` and `http://localhost:3000/*` for local testing.
 
@@ -132,6 +139,9 @@ GEMINI_API_KEY
 PRONUNCIATION_API_URL
 PRONUNCIATION_API_KEY
 PRONUNCIATION_API_TIMEOUT_MS
+PRONUNCIATION_PROVIDER
+AZURE_SPEECH_KEY
+AZURE_SPEECH_REGION
 ```
 
 Optional GitHub repository secrets for **Save audio to R2**:
@@ -172,9 +182,9 @@ git config core.hooksPath .githooks
 
 ## Notes
 
-- Audio is recorded as `audio/webm`.
+- Audio is recorded as 16 kHz mono `audio/wav`.
 - By default, `/api/transcribe` receives the browser audio directly and sends it to Gemini.
-- If `PRONUNCIATION_API_URL` is configured, `/api/pronunciation-assess` proxies authenticated requests to the external FastAPI `/assess` service described in `pronunciation-api-prompt.md`.
+- `/api/pronunciation-assess` proxies authenticated requests to the provider selected by `PRONUNCIATION_PROVIDER`: the external FastAPI `/assess` service for `self-hosted`, or Azure Speech REST pronunciation assessment for `azure`.
 - If the user enables **Save audio to R2**, the browser uploads audio through `/api/upload-url`, then `/api/transcribe` reads the private R2 object server-side.
 - `/api/feedback` sends the transcript, target sentence, and optional pronunciation assessment to Gemini, validates the JSON response, then stores the attempt in Supabase.
 - Topic and focus filters use tags in `items.tags`.

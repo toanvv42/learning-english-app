@@ -8,8 +8,14 @@ import { requireEnv } from "@/lib/env";
 import { enforceUserRateLimit } from "@/lib/rateLimit";
 
 const requestSchema = z.object({
-  contentType: z.literal("audio/webm"),
+  contentType: z.enum(["audio/wav", "audio/webm", "audio/ogg"]),
 });
+
+const audioExtensions: Record<z.infer<typeof requestSchema>["contentType"], string> = {
+  "audio/wav": "wav",
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+};
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     const body = requestSchema.parse(await request.json());
-    const objectKey = `recordings/${user.id}/${Date.now()}.webm`;
+    const objectKey = `recordings/${user.id}/${Date.now()}.${audioExtensions[body.contentType]}`;
     const command = new PutObjectCommand({
       Bucket: requireEnv("R2_BUCKET_NAME"),
       Key: objectKey,

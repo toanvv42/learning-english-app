@@ -260,10 +260,11 @@ export function PracticeClient({ items }: PracticeClientProps) {
       let objectKey: string | null = null;
 
       if (saveAudio) {
+        const contentType = blob.type || "audio/wav";
         const uploadUrlResponse = await fetch("/api/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contentType: "audio/webm" }),
+          body: JSON.stringify({ contentType }),
         });
         const upload = await parseApiResponse<UploadResponse>(
           uploadUrlResponse,
@@ -277,7 +278,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
         try {
           uploadResponse = await fetch(upload.uploadUrl, {
             method: "PUT",
-            headers: { "Content-Type": "audio/webm" },
+            headers: { "Content-Type": contentType },
             body: blob,
           });
         } catch {
@@ -308,7 +309,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
                 method: "POST",
                 body: (() => {
                   const formData = new FormData();
-                  formData.append("audio", blob, "recording.webm");
+                  formData.append("audio", blob, "recording.wav");
                   formData.append("targetSentence", item.content);
                   formData.append("language", "en-us");
                   return formData;
@@ -331,7 +332,7 @@ export function PracticeClient({ items }: PracticeClientProps) {
         }
 
         const formData = new FormData();
-        formData.append("audio", blob, "recording.webm");
+        formData.append("audio", blob, "recording.wav");
         formData.append("model", geminiModel);
         const transcribeResponse = objectKey
           ? await fetch("/api/transcribe", {
