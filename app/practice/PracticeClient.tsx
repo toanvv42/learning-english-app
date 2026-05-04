@@ -688,21 +688,9 @@ export function PracticeClient({ items }: PracticeClientProps) {
               <Badge variant="secondary" className="min-w-0 justify-center truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
                 {topics.find((t) => t.value === topic)?.label}
               </Badge>
-              <Badge variant="secondary" className="hidden min-w-0 justify-center truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10 sm:inline-flex">
+              <Badge variant="secondary" className="min-w-0 justify-center truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10">
                 {focuses.find((f) => f.value === focus)?.label}
               </Badge>
-              <Badge variant="secondary" className="min-w-0 max-w-[15rem] justify-center truncate rounded-full bg-moss/10 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-moss ring-1 ring-moss/20 sm:px-4 sm:py-1.5">
-                {GEMINI_MODELS.find((m) => m.value === geminiModel)?.label || geminiModel}
-              </Badge>
-              <Badge variant="secondary" className="hidden min-w-0 justify-center gap-1 truncate rounded-full bg-moss/5 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-moss/60 ring-1 ring-moss/10 sm:inline-flex">
-                {pronunciationProvider === "azure" && <Crown className="h-3 w-3 text-copper" />}
-                {pronunciationProviders.find((provider) => provider.value === pronunciationProvider)?.label}
-              </Badge>
-              {sessionGeminiApiKey && (
-                <Badge variant="secondary" className="hidden min-w-0 justify-center truncate rounded-full bg-copper/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-copper ring-1 ring-copper/20 sm:inline-flex">
-                  Personal Key
-                </Badge>
-              )}
             </div>
             <Button
               variant="ghost"

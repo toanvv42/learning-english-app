@@ -70,7 +70,11 @@ const azureResponseSchema = z.object({
 });
 
 export function parsePronunciationProvider(provider: string): PronunciationProvider {
-  const normalizedProvider = provider.toLowerCase();
+  const normalizedProvider = provider.trim().toLowerCase();
+
+  if (!normalizedProvider) {
+    return "self-hosted";
+  }
 
   if (normalizedProvider === "azure") {
     return "azure";
@@ -78,7 +82,9 @@ export function parsePronunciationProvider(provider: string): PronunciationProvi
 
   if (
     normalizedProvider === "self-hosted" ||
+    normalizedProvider === "self-host" ||
     normalizedProvider === "self_hosted" ||
+    normalizedProvider === "self_host" ||
     normalizedProvider === "selfhosted"
   ) {
     return "self-hosted";
